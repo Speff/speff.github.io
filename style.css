@@ -1,0 +1,13 @@
+#c{
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+}
+
+html body{
+    background-color: #222;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
