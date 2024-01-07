@@ -1,0 +1,30 @@
+[
+    {
+        "author": "Your Name",
+        "core-version": ">=5.1.22",
+        "dependents": "",
+        "description": "Description of this plugin",
+        "list": "readme config tree",
+        "plugin-type": "plugin",
+        "title": "$:/plugins/your-name/plugin-name",
+        "type": "application/json",
+        "version": "0.0.1",
+        "Modern.TiddlyDev#SHA256-Hashed": "e65dfdc05d1bdd9abf63bfd08d8113f1c4851bee3083fa25f7b4c7928e2c384f",
+        "readme": "!! Read Me\n\nThe quick brown fox jumps over a lazy dog.\r\n",
+        "requires-reload": "yes"
+    },
+    {
+        "author": "Speff",
+        "dependents": "",
+        "description": "Wrapper for Google's Typograms.js",
+        "list": "readme credits",
+        "name": "typograms-tw5",
+        "plugin-type": "plugin",
+        "title": "$:/plugins/Speff/typograms-tw5",
+        "type": "application/json",
+        "version": "1.0.4",
+        "Modern.TiddlyDev#SHA256-Hashed": "71d6ad363387a2f2fc5dede07013742fc7e695eaa83556c8e65882237ec22ecb",
+        "readme": "\\define plugin() $:/plugins/Speff/typograms-tw5\n\\define install()\n<$list\n  filter=\"[<transclusion>prefix[{$(plugin)$/readme|$(plugin)$/readme|||}]]\"\n  emptyMessage=\"$(plugin)$\"\n>\n{{ $(plugin)$||$:/core/ui/Components/plugin-info }}\n</$list>\n\\end\n\n\n! typograms-tw5\n\n!! What is it\n\nWrapper for Google's Typograms.js - a javascript library which can render ASCII diagrams into simple diagrams\n<br> Take a look at [[the Typogram page|https://google.github.io/typograms/]] for more details and examples\n\n!! Calling it\n\nThe renderer can be invoked in one of two ways -\n\n* Via the `<$typogram/>` widget. Typical usage:\n\n<<<\n`<$typogram zoom=0.3 text=\"\"\"\n[ASCII ART HERE]\n\"\"\"/>`\n<br>Note: a `height` attribute can also be passed if needed. `zoom=0.3` is the default value and does not need to be provided\n<<<\n\n* Transclusion via the newly added `text/vnd.tiddlywiki.typogram` content type\n<<<\nA new tiddler can be created with the aforementioned content type which can then be transcluded to other tiddlers. A new dropdown item has been created which can be used to quickly select this type. ''The text in the typogram tiddler should only contain code for the typogram itself''\n<br>Note: custom options such as `height` and `zoom` can't be passed if using this method\n<<<\n\n!! Helper object\n\nDiagramming a typogram is only possible when using a monospace font. A new toolbar button has been included with this plugin to toggle between variable/monospace font for the text editor\n\n!! Installation\n\nManually install the plugin by dragging this link to your TiddlyWiki:\n\n<<install>>\n\nThen save and refresh your TiddlyWiki. ",
+        "requires-reload": "yes"
+    }
+]
