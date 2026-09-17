@@ -1,0 +1,15 @@
+{
+  "name": "Tiwaz",
+  "short_name": "Tiwaz",
+  "description": "Shading game: paint where the light falls, then check against the true lit/shadow split.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#101012",
+  "theme_color": "#101012",
+  "icons": [
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

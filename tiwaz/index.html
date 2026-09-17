@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Tiwaz</title>
+    <meta name="theme-color" content="#101012" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tiwaz" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon-180.png" />
+    <link rel="apple-touch-icon" href="./icons/icon-180.png" />
+    <script type="module" crossorigin src="/tiwaz/assets/index-3NbyQukt.js"></script>
+    <link rel="stylesheet" crossorigin href="/tiwaz/assets/index-CXPowKZs.css">
+  </head>
+  <body>
+    <div id="app">
+      <div id="viewport-wrap">
+        <canvas id="viewport"></canvas>
+      </div>
+      <div id="brush-cursor" hidden></div>
+      <div id="brush-panel">
+        <div id="brush-group">
+          <button id="btn-brush-lit" type="button" class="brush-btn active" aria-pressed="true" title="Lit (1)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><circle cx="12" cy="12" r="5" /><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="23" /><line x1="1" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="23" y2="12" /><line x1="4.2" y1="4.2" x2="6.3" y2="6.3" /><line x1="17.7" y1="17.7" x2="19.8" y2="19.8" /><line x1="4.2" y1="19.8" x2="6.3" y2="17.7" /><line x1="17.7" y1="6.3" x2="19.8" y2="4.2" /></g></svg>
+          </button>
+          <button id="btn-brush-shadow" type="button" class="brush-btn" aria-pressed="false" title="Shadow (2)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 2a8 8 0 0 0 0 16 8 8 0 0 0 6.3-3.1A9 9 0 0 1 12 2z" /></svg>
+          </button>
+        </div>
+        <div id="brush-size-panel" title="Brush size ([ and ])">
+          <input id="brush-size" type="range" min="2" max="80" value="12" aria-label="Brush size" />
+          <span id="brush-size-value">12</span>
+        </div>
+        <button id="btn-brush-erase" type="button" class="brush-btn" aria-pressed="false" title="Erase (3)">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M18.5 8.5 11 16H6l-3.5-3.5a2 2 0 0 1 0-2.83l7-7a2 2 0 0 1 2.83 0l6.17 6.17a2 2 0 0 1 0 2.83L15 15" /><path d="M8.5 10.5 14 16" /><path d="M6 20h15" /></svg>
+        </button>
+        <div class="panel-sep"></div>
+        <button id="btn-move" type="button" class="brush-btn" aria-pressed="false" title="Move (M): drag to rotate, drag a gizmo ring to turn about its axis, shift-drag to pan, scroll to zoom, double-click to reset">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" /><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" /><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" /><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></svg>
+        </button>
+      </div>
+      <div id="settings">
+        <button id="btn-settings" type="button" aria-expanded="false" aria-controls="settings-menu" title="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+        </button>
+        <button id="btn-fullscreen" type="button" aria-pressed="false" title="Fullscreen" hidden>
+          <svg class="icon-enter" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" /></svg>
+          <svg class="icon-exit" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" /><path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" /></svg>
+        </button>
+        <div id="settings-menu" hidden>
+          <label class="setting"><span>Cast shadows</span><input id="setting-shadows" type="checkbox" role="switch" /></label>
+          <label class="setting"><span>Rotation gizmo</span><input id="setting-gizmo" type="checkbox" role="switch" /></label>
+          <label class="setting"><span>Stylus only</span><input id="setting-stylus-only" type="checkbox" role="switch" /></label>
+        </div>
+      </div>
+      <div id="gizmo-wrap" hidden>
+        <canvas id="gizmo"></canvas>
+      </div>
+      <div id="compass-wrap">
+        <div id="compass-circle">
+          <canvas id="compass"></canvas>
+        </div>
+        <div id="compass-hint"><span class="hint-label">Light</span><span id="compass-hint-value"></span></div>
+      </div>
+      <div id="hud">
+        <div id="hud-top">
+          <span id="app-name">Tiwaz</span>
+          <select id="model-picker" title="Model"></select>
+          <span id="model-credit"></span>
+        </div>
+        <div id="hud-bottom">
+          <span id="score-readout"><span id="score-pct"></span><span id="score-detail"></span></span>
+          <div id="action-group">
+            <button id="btn-retry" type="button" hidden title="Same model, same light">Retry</button>
+            <button id="btn-new-light" type="button" hidden title="Same model, new light">New light</button>
+            <button id="btn-next" type="button" hidden>Next model</button>
+            <button id="btn-submit" type="button">Reveal &amp; score</button>
+            <button id="btn-clear" type="button">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
