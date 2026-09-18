@@ -17,6 +17,7 @@ which both licenses permit as long as the notice travels with it.
 | Move tool (`#btn-move`) | Lucide `rotate-3d` | as-is |
 | Undo / redo (`#btn-undo`, `#btn-redo`) | Lucide `undo-2` / `redo-2` | adapted (simplified arc) |
 | Compass reset (`#btn-compass-reset`) | Lucide `rotate-ccw` | adapted (shortened arc) |
+| New light direction (`#btn-compass-new`) | Feather `shuffle` | as-is |
 
 Sources: Feather, https://github.com/feathericons/feather; Lucide,
 https://github.com/lucide-icons/lucide (itself a fork of Feather). Both notices below are
