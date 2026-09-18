@@ -13,8 +13,8 @@
     <link rel="icon" href="./icons/icon-180.png" />
     <link rel="apple-touch-icon" href="./icons/icon-180.png" />
     <!-- Some inline SVG icons below come from Feather (MIT) and Lucide (ISC): see public/icons/LICENSES.md. -->
-    <script type="module" crossorigin src="/tiwaz/assets/index-B0vZ55HN.js"></script>
-    <link rel="stylesheet" crossorigin href="/tiwaz/assets/index-CrbbI1IW.css">
+    <script type="module" crossorigin src="/tiwaz/assets/index-DVqFid3X.js"></script>
+    <link rel="stylesheet" crossorigin href="/tiwaz/assets/index-CORwkZ0U.css">
   </head>
   <body>
     <div id="app">
@@ -96,6 +96,7 @@
             <h3>Input</h3>
             <label class="setting"><span>Stylus only</span><input id="setting-stylus-only" type="checkbox" role="switch" /></label>
             <label class="setting"><span>Invert compass drag</span><input id="setting-compass-invert" type="checkbox" role="switch" /></label>
+            <label class="setting" title="How to draw a new light: the button on the compass, holding the small compass for the button hold time, or either. Clears the painting, which undo brings back."><span>New light</span><select id="setting-new-light"></select></label>
           </section>
           <section>
             <h3>Tool buttons</h3>
@@ -142,7 +143,7 @@
           <div id="compass-circle" role="button" tabindex="0" aria-expanded="false" aria-label="Light compass: expand to turn it">
             <canvas id="compass"></canvas>
           </div>
-          <button id="btn-compass-new" type="button" title="New light direction (clears the painting)" aria-label="New light direction">
+          <button id="btn-compass-new" type="button" title="New light direction (clears the painting; undo brings it back)" aria-label="New light direction">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8" /><line x1="4" y1="20" x2="21" y2="3" /><polyline points="21 16 21 21 16 21" /><line x1="15" y1="15" x2="21" y2="21" /><line x1="4" y1="4" x2="9" y2="9" /></svg>
           </button>
           <button id="btn-compass-reset" type="button" title="Reset compass view" aria-label="Reset compass view" disabled>
