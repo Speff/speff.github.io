@@ -13,8 +13,8 @@
     <link rel="icon" href="./icons/icon-180.png" />
     <link rel="apple-touch-icon" href="./icons/icon-180.png" />
     <!-- Some inline SVG icons below come from Feather (MIT) and Lucide (ISC): see public/icons/LICENSES.md. -->
-    <script type="module" crossorigin src="/tiwaz/assets/index-DxJk3asO.js"></script>
-    <link rel="stylesheet" crossorigin href="/tiwaz/assets/index-B_MoQiBC.css">
+    <script type="module" crossorigin src="/tiwaz/assets/index-CeOFR6MF.js"></script>
+    <link rel="stylesheet" crossorigin href="/tiwaz/assets/index-BhSlgdW2.css">
   </head>
   <body>
     <div id="app">
@@ -30,7 +30,7 @@
           <button id="btn-brush-shadow" type="button" class="brush-btn" aria-pressed="false" title="Shadow (2)">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 2a8 8 0 0 0 0 16 8 8 0 0 0 6.3-3.1A9 9 0 0 1 12 2z" /></svg>
           </button>
-          <button id="btn-fill-other" type="button" class="brush-btn fills-shadow" title="Fill the rest with Shadow (F)">
+          <button id="btn-fill" type="button" class="brush-btn fills-shadow">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3 3.5 10.5a1.5 1.5 0 0 0 0 2.1l5.9 5.9a1.5 1.5 0 0 0 2.1 0L19 11z" /><path d="M3.3 11.5h15.2" /><path class="fill-drop" d="M20.5 14.5s-2 2.3-2 3.6a2 2 0 0 0 4 0c0-1.3-2-3.6-2-3.6z" stroke="none" /></svg>
           </button>
         </div>
@@ -53,7 +53,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
         </button>
       </div>
-      <div id="reveal-views" hidden>
+      <div id="reveal-views">
         <button id="btn-view" type="button" aria-expanded="false" aria-controls="reveal-view-options" title="Choose what to show over the model">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
           <span>View</span>
@@ -74,18 +74,39 @@
         </div>
       </div>
       <div id="settings">
-        <button id="btn-settings" type="button" aria-expanded="false" aria-controls="settings-menu" title="Settings">
+        <div id="settings-bar">
+          <button id="btn-settings" type="button" class="brush-btn" aria-expanded="false" aria-controls="settings-menu" title="Settings">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
         </button>
-        <button id="btn-fullscreen" type="button" aria-pressed="false" title="Fullscreen" hidden>
+          <button id="btn-fullscreen" type="button" class="brush-btn" aria-pressed="false" title="Fullscreen" hidden>
           <svg class="icon-enter" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" /></svg>
           <svg class="icon-exit" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" /><path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" /></svg>
         </button>
-        <div id="settings-menu" hidden>
-          <label class="setting"><span>Cast shadows</span><input id="setting-shadows" type="checkbox" role="switch" /></label>
-          <label class="setting"><span>Wireframe</span><input id="setting-wireframe" type="checkbox" role="switch" /></label>
-          <label class="setting"><span>Stylus only</span><input id="setting-stylus-only" type="checkbox" role="switch" /></label>
-          <label class="setting"><span>Invert compass drag</span><input id="setting-compass-invert" type="checkbox" role="switch" /></label>
+        </div>
+        <div id="settings-menu" role="dialog" aria-labelledby="settings-title">
+          <h2 id="settings-title">Settings</h2>
+          <section>
+            <h3>Display</h3>
+            <label class="setting"><span>Cast shadows</span><input id="setting-shadows" type="checkbox" role="switch" /></label>
+            <label class="setting"><span>Wireframe</span><input id="setting-wireframe" type="checkbox" role="switch" /></label>
+            <label class="setting"><span>View after scoring</span><select id="setting-default-view"></select></label>
+          </section>
+          <section>
+            <h3>Input</h3>
+            <label class="setting"><span>Stylus only</span><input id="setting-stylus-only" type="checkbox" role="switch" /></label>
+            <label class="setting"><span>Invert compass drag</span><input id="setting-compass-invert" type="checkbox" role="switch" /></label>
+          </section>
+          <section>
+            <h3>Tool buttons</h3>
+            <label class="setting setting-range">
+              <span>Button hold time</span>
+              <input id="setting-hold-ms" type="range" step="100" />
+              <output id="setting-hold-ms-value" for="setting-hold-ms"></output>
+            </label>
+            <div id="setting-tool-actions">
+              <span class="tool-actions-head"></span><span class="tool-actions-head">Tap</span><span class="tool-actions-head">Hold</span>
+            </div>
+          </section>
         </div>
       </div>
       <svg id="pose-link" aria-hidden="true"><path /></svg>
