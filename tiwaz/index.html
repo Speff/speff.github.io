@@ -12,16 +12,17 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon-180.png" />
     <link rel="apple-touch-icon" href="./icons/icon-180.png" />
-    <script type="module" crossorigin src="/tiwaz/assets/index-CKoDUPVD.js"></script>
-    <link rel="stylesheet" crossorigin href="/tiwaz/assets/index-BiMBl4My.css">
+    <!-- Some inline SVG icons below come from Feather (MIT) and Lucide (ISC): see public/icons/LICENSES.md. -->
+    <script type="module" crossorigin src="/Program Files/Git/tiwaz/assets/index-BZ-SvfRd.js"></script>
+    <link rel="stylesheet" crossorigin href="/Program Files/Git/tiwaz/assets/index-B_MoQiBC.css">
   </head>
   <body>
     <div id="app">
-      <div id="viewport-wrap">
+      <div id="viewport-wrap" class="faded">
         <canvas id="viewport"></canvas>
       </div>
       <div id="brush-cursor" hidden></div>
-      <div id="brush-panel">
+      <div id="brush-panel" class="tools-hidden">
         <div id="brush-group">
           <button id="btn-brush-lit" type="button" class="brush-btn active" aria-pressed="true" title="Lit (1)">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><circle cx="12" cy="12" r="5" /><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="23" /><line x1="1" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="23" y2="12" /><line x1="4.2" y1="4.2" x2="6.3" y2="6.3" /><line x1="17.7" y1="17.7" x2="19.8" y2="19.8" /><line x1="4.2" y1="19.8" x2="6.3" y2="17.7" /><line x1="17.7" y1="6.3" x2="19.8" y2="4.2" /></g></svg>
@@ -29,18 +30,48 @@
           <button id="btn-brush-shadow" type="button" class="brush-btn" aria-pressed="false" title="Shadow (2)">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 2a8 8 0 0 0 0 16 8 8 0 0 0 6.3-3.1A9 9 0 0 1 12 2z" /></svg>
           </button>
+          <button id="btn-fill-other" type="button" class="brush-btn fills-shadow" title="Fill the rest with Shadow (F)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3 3.5 10.5a1.5 1.5 0 0 0 0 2.1l5.9 5.9a1.5 1.5 0 0 0 2.1 0L19 11z" /><path d="M3.3 11.5h15.2" /><path class="fill-drop" d="M20.5 14.5s-2 2.3-2 3.6a2 2 0 0 0 4 0c0-1.3-2-3.6-2-3.6z" stroke="none" /></svg>
+          </button>
         </div>
         <div id="brush-size-panel" title="Brush size ([ and ])">
           <input id="brush-size" type="range" min="2" max="80" value="12" aria-label="Brush size" />
           <span id="brush-size-value">12</span>
+          <div id="brush-size-preview" aria-hidden="true"></div>
         </div>
         <button id="btn-brush-erase" type="button" class="brush-btn" aria-pressed="false" title="Erase (3) — hold to clear everything">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M18.5 8.5 11 16H6l-3.5-3.5a2 2 0 0 1 0-2.83l7-7a2 2 0 0 1 2.83 0l6.17 6.17a2 2 0 0 1 0 2.83L15 15" /><path d="M8.5 10.5 14 16" /><path d="M6 20h15" /></svg>
         </button>
-        <div class="panel-sep"></div>
-        <button id="btn-move" type="button" class="brush-btn" aria-pressed="false" title="Move (M): drag to rotate, drag a gizmo ring to turn about its axis, shift-drag to pan, scroll to zoom, double-click to reset">
-          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" /><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" /><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" /><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></svg>
+        <button id="btn-move" type="button" class="brush-btn" aria-pressed="false" title="Move (M): drag to rotate, drag from yaw/pitch/roll to turn about one axis, shift-drag to pan, scroll to zoom, double-click to reset">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16.466 7.5C15.643 4.237 13.952 2 12 2 9.239 2 7 6.477 7 12s2.239 10 5 10c.342 0 .677-.069 1-.2" /><path d="m15.194 13.707 3.814 1.86-1.86 3.814" /><path d="M19 15.57c-1.804.885-4.274 1.43-7 1.43-5.523 0-10-2.239-10-5s4.477-5 10-5c4.838 0 8.873 1.718 9.8 4" /></svg>
         </button>
+        <div class="panel-sep"></div>
+        <button id="btn-undo" type="button" class="brush-btn" title="Undo (Ctrl/Cmd+Z)" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+        </button>
+        <button id="btn-redo" type="button" class="brush-btn" title="Redo (Ctrl/Cmd+Shift+Z or Ctrl+Y)" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
+        </button>
+      </div>
+      <div id="reveal-views" hidden>
+        <button id="btn-view" type="button" aria-expanded="false" aria-controls="reveal-view-options" title="Choose what to show over the model">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+          <span>View</span>
+        </button>
+        <div id="reveal-view-options">
+          <button type="button" data-view="render" aria-pressed="false" title="The model under the graded light alone, with no marks over it">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" /><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none" /></svg>
+            <span>Rendered</span>
+          </button>
+          <button type="button" data-view="painted" aria-pressed="false" title="Your painting as you left it, before scoring">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.4 2.6a2 2 0 0 1 2.9 2.9L11 15.8 8.2 13z" /><path d="M8.2 13C6 13 4.5 14.6 4.5 16.6c0 1.6-.8 2.9-2 3.4 3.3 1.2 7.8.4 8.5-3.4z" /></svg>
+            <span>Marked</span>
+          </button>
+          <button type="button" data-view="verdict" aria-pressed="true" title="Your painting graded: green right, red wrong, amber on a shadow edge">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="8 12.5 11 15.5 16.5 9" /></svg>
+            <span>Scored</span>
+          </button>
+        </div>
       </div>
       <div id="settings">
         <button id="btn-settings" type="button" aria-expanded="false" aria-controls="settings-menu" title="Settings">
@@ -53,27 +84,56 @@
         <div id="settings-menu" hidden>
           <label class="setting"><span>Cast shadows</span><input id="setting-shadows" type="checkbox" role="switch" /></label>
           <label class="setting"><span>Wireframe</span><input id="setting-wireframe" type="checkbox" role="switch" /></label>
-          <label class="setting"><span>Rotation gizmo</span><input id="setting-gizmo" type="checkbox" role="switch" /></label>
           <label class="setting"><span>Stylus only</span><input id="setting-stylus-only" type="checkbox" role="switch" /></label>
           <label class="setting"><span>Invert compass drag</span><input id="setting-compass-invert" type="checkbox" role="switch" /></label>
         </div>
       </div>
-      <div id="gizmo-wrap" hidden>
-        <canvas id="gizmo"></canvas>
+      <svg id="pose-link" aria-hidden="true"><path /></svg>
+      <div id="pose-buttons">
+        <div class="pose-row">
+          <button type="button" data-action="yaw" class="axis-yaw" title="Yaw: drag left or right to turn the model left or right">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21" stroke-dasharray="2 2.5" opacity="0.6" /><ellipse cx="12" cy="12" rx="9" ry="4" /><polyline points="9.5 13.5 12.5 16 9.5 18.5" /></svg>
+            <span>Yaw</span>
+          </button>
+          <button type="button" data-action="pitch" class="axis-pitch" title="Pitch: drag up or down to tip the model toward or away from you">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12" stroke-dasharray="2 2.5" opacity="0.6" /><ellipse cx="12" cy="12" rx="4" ry="9" /><polyline points="13.5 9.5 16 12.5 18.5 9.5" /></svg>
+            <span>Pitch</span>
+          </button>
+          <button type="button" data-action="roll" class="axis-roll" title="Roll: drag right or down to spin the model clockwise in the screen plane, left or up for counterclockwise">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.2" fill="currentColor" opacity="0.6" /><path d="M20 12a8 8 0 1 1-2.34-5.66" /><polyline points="18 2.5 18 6.5 14 6.5" /></svg>
+            <span>Roll</span>
+          </button>
+        </div>
+        <div class="pose-row">
+          <button type="button" data-action="pan" class="pose-neutral" title="Pan: drag to move the model">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21" /><line x1="3" y1="12" x2="21" y2="12" /><polyline points="9 6 12 3 15 6" /><polyline points="9 18 12 21 15 18" /><polyline points="6 9 3 12 6 15" /><polyline points="18 9 21 12 18 15" /></svg>
+            <span>Pan</span>
+          </button>
+          <button type="button" data-action="zoom" class="pose-neutral" title="Zoom: drag up or right to zoom in, down or left to zoom out">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5" /><line x1="15.3" y1="15.3" x2="21" y2="21" /><line x1="10.5" y1="7.5" x2="10.5" y2="13.5" /><line x1="7.5" y1="10.5" x2="13.5" y2="10.5" /></svg>
+            <span>Zoom</span>
+          </button>
+        </div>
       </div>
       <div id="compass-wrap">
         <div id="compass-circle">
           <canvas id="compass"></canvas>
         </div>
+        <button id="btn-compass-reset" type="button" title="Reset compass view" aria-label="Reset compass view" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 3v5h5" /></svg>
+        </button>
         <div id="compass-hint"><span class="hint-label">Light</span><span id="compass-hint-value"></span></div>
       </div>
       <div id="hud">
         <div id="hud-top">
           <span id="app-name">Tiwaz</span>
-          <select id="model-picker" title="Model"></select>
+          <span class="hud-sep" aria-hidden="true"></span>
+          <label id="model-label" for="model-picker">Model</label>
+          <select id="model-picker"></select>
         </div>
         <div id="hud-bottom">
-          <span id="score-readout"><span id="score-pct"></span><span id="score-detail"></span></span>
+          <span id="score-readout" hidden><span id="score-pct"></span><span id="score-detail"></span></span>
+          <div id="busy-spinner" aria-hidden="true"></div>
           <div id="action-group">
             <button id="btn-retry" type="button" hidden title="Same model, same light">Retry</button>
             <button id="btn-new-light" type="button" hidden title="Same model, new light">New light</button>
