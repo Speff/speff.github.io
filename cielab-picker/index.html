@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CIELAB Picker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500&display=swap">
+<style>
+/* Greys are true neutrals on purpose: a tinted surround would bias colour judgement. */
+:root {
+  --ground: #cfcfcf;
+  --panel: #dcdcdc;
+  --well: #b7b7b7;
+  --line: #a1a1a1;
+  --ink: #161616;
+  --ink-2: #474747;
+  --focus: #000000;
+  --glass: rgba(226, 226, 226, 0.78);
+  --glass-line: rgba(0, 0, 0, 0.22);
+  --hair: rgba(0, 0, 0, 0.12);
+  --hover: rgba(0, 0, 0, 0.07);
+  --flash: rgba(0, 0, 0, 0.16);
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  --sans: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #1c1c1c;
+    --panel: #272727;
+    --well: #111111;
+    --line: #404040;
+    --ink: #ececec;
+    --ink-2: #a3a3a3;
+    --focus: #ffffff;
+    --glass: rgba(34, 34, 34, 0.72);
+    --glass-line: rgba(255, 255, 255, 0.16);
+    --hair: rgba(255, 255, 255, 0.09);
+    --hover: rgba(255, 255, 255, 0.07);
+    --flash: rgba(255, 255, 255, 0.18);
+    --shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #1c1c1c;
+  --panel: #272727;
+  --well: #111111;
+  --line: #404040;
+  --ink: #ececec;
+  --ink-2: #a3a3a3;
+  --focus: #ffffff;
+  --glass: rgba(34, 34, 34, 0.72);
+  --glass-line: rgba(255, 255, 255, 0.16);
+  --hair: rgba(255, 255, 255, 0.09);
+  --hover: rgba(255, 255, 255, 0.07);
+  --flash: rgba(255, 255, 255, 0.18);
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  padding-inline: 16px;
+  padding-block: 16px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 14px/1.4 var(--sans);
+}
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* The square is sized from the viewport height so the whole picker fits one screen or one iframe. */
+.stage {
+  width: min(100%, max(280px, calc(100vh + 44px)));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 14px;
+}
+
+/* ---------- plane ---------- */
+.plane {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.surface {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+  border-radius: 2px;
+}
+.surface:focus-visible { outline-offset: -3px; }
+/* Focus reached by clicking or touching shows no ring; reaching it with Tab still does. */
+.surface.quiet, .track.quiet { outline: none; }
+.surface canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.marker {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1.5px #000, inset 0 0 0 1px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+/* Floating chrome over the square: translucent, blurred, neutral. */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+}
+
+.tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 2px; padding: 3px; border-radius: 11px; }
+.tool {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.tool:hover { background: var(--hover); color: var(--ink); }
+.tool:active { transform: scale(0.94); }
+.tool[aria-pressed="true"], .tool[aria-expanded="true"] {
+  background: var(--ink);
+  color: var(--well);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.tool svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tool[aria-expanded="true"] svg { transform: rotate(60deg); }
+
+.settings {
+  position: absolute;
+  top: 54px;
+  right: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+}
+.switch { display: flex; gap: 14px; align-items: center; justify-content: space-between; cursor: pointer; white-space: nowrap; }
+.switch input {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  border-radius: 9px;
+  background: var(--flash);
+  cursor: pointer;
+}
+.switch input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink-2);
+}
+.switch input:checked { background: var(--ink); }
+.switch input:checked::after { transform: translateX(12px); background: var(--well); }
+
+/* Values card. Across all lightnesses the sRGB gamut never enters a triangle in the square's
+   bottom-left (below the cyan-to-blue edge), so the card is sized to stay inside it and never
+   covers colour. Measured by projecting the sRGB cube's surface onto a*b*: with a 10px inset, a
+   188px-wide card fits at 30px tall from a 292px square, 84px from 380px, 138px from 462px. Rows
+   are added as the square grows past those sizes. */
+.plane { container-type: inline-size; }
+.info { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px); }
+.card { display: grid; width: 188px; max-width: 100%; border-radius: 10px; overflow: hidden; touch-action: manipulation; }
+.card [data-copy] { cursor: copy; }
+.card [data-copy]:focus-visible { outline-offset: -2px; }
+/* Double-clicking a number swaps it for this field; it must not change the card's size. */
+.edit {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 20px;
+  padding: 0 3px;
+  background: var(--well);
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  font: 400 12px/1 var(--mono);
+  text-align: right;
+  cursor: text;
+}
+.swatch .edit { text-align: left; color: var(--ink); }
+.swatch:has(.edit) { align-items: center; padding-top: 0; }
+.swatch:has(.edit) .k { display: none; }
+
+/* Header is the swatch itself: the picked colour and the grey of the same L*. Both have the same
+   lightness, so one text colour (--on, set from L*) reads on both. */
+.info-head { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.swatch { min-width: 0; display: flex; align-items: baseline; gap: 6px; min-height: 28px; padding: 6px 10px 0; color: var(--on, #fff); }
+.swatch .k { font: 500 10px/1.2 var(--sans); letter-spacing: 0.11em; text-transform: uppercase; opacity: 0.72; }
+.swatch .v { font: 500 13px/1.2 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.swatch:hover .k, .swatch.copied .k { opacity: 1; }
+
+.info-row {
+  display: grid;
+  grid-template-columns: repeat(3, 50px);
+  column-gap: 8px;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  background: none;
+}
+.card .info-row { border-top: 1px solid var(--hair); }
+.info-row:hover { background: var(--hover); }
+.info-row.copied { background: var(--flash); }
+.cell { display: flex; justify-content: space-between; align-items: baseline; gap: 3px; min-width: 0; }
+.cell .k { font: 500 11px/1.3 var(--sans); color: var(--ink-2); }
+.cell .v { font: 400 12px/1.3 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.card .info-row { display: none; }
+@container (min-width: 388px) {
+  .card .info-row.keep { display: grid; }
+}
+@container (min-width: 470px) {
+  .card .info-row { display: grid; }
+}
+
+/* Appears above the card for a moment after a copy. */
+.toast {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+}
+.toast.show { opacity: 1; }
+
+/* ---------- lightness ---------- */
+.lift { display: grid; grid-template-columns: 22px 34px; column-gap: 6px; }
+.ticks { position: relative; }
+.ticks button {
+  position: absolute;
+  right: 0;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  transform: translateY(-50%);
+  background: none;
+  border: 0;
+  border-radius: 2px;
+  font: 400 11px/20px var(--mono);
+  text-align: right;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.ticks button:hover { color: var(--ink); }
+.ticks button[aria-pressed="true"] { color: var(--ink); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.track {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--well);
+  touch-action: none;
+  cursor: ns-resize;
+}
+.track canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 2px; }
+.thumb {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  height: 8px;
+  transform: translateY(-50%);
+  border: 2px solid #fff;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1.5px #000, inset 0 0 0 1px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tool { transition: background 0.14s, color 0.14s, transform 0.1s; }
+  .tool svg { transition: transform 0.25s; }
+  .ticks button { transition: color 0.12s; }
+  .switch input, .info-row { transition: background 0.15s; }
+  .toast { transition: opacity 0.15s; }
+  .switch input::after { transition: transform 0.15s, background 0.15s; }
+}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="plane" id="plane">
+    <div class="surface" id="surface" tabindex="0" role="group" aria-label="a* b* plane at the current lightness. Arrow keys move the selection by 1, Shift and arrow by 10.">
+      <canvas id="planeCanvas" width="600" height="600"></canvas>
+      <div class="marker" id="marker"></div>
+    </div>
+
+    <div class="tools glass">
+      <button type="button" class="tool" id="infoBtn" aria-pressed="true" aria-controls="info" aria-label="Colour values" title="Colour values">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="11"></line><line x1="12" y1="7.5" x2="12" y2="7.5"></line></svg>
+      </button>
+      <button type="button" class="tool" id="cogBtn" aria-expanded="false" aria-controls="settings" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
+    </div>
+
+    <div class="settings glass" id="settings" hidden>
+      <label class="switch" for="targetToggle">Target circle <input type="checkbox" id="targetToggle" role="switch" checked></label>
+      <label class="switch" for="hexToggle">RGB in hex <input type="checkbox" id="hexToggle" role="switch"></label>    </div>
+
+    <div class="info" id="info">
+      <div class="toast glass" id="toast" role="status"></div>
+      <div class="card glass">
+        <!-- Click copies; double-click (or F2) on a number swaps it for a field to type in. -->
+        <div class="info-head" id="infoHead">
+          <div class="swatch" id="swPicked" role="button" tabindex="0" data-copy="hex" data-name="hex" data-field="hex" data-label="Hex" title="Click to copy hex. Double-click to type one." aria-label="Copy hex"><span class="v" id="vHex"></span></div>
+          <div class="swatch" id="swGrey" role="button" tabindex="0" data-copy="val" data-name="value" data-field="val" data-label="Value, 0 to 10" title="Grey of the same L*. Click to copy the value. Double-click to type one." aria-label="Copy value"><span class="k">Val</span><span class="v" id="vVal"></span></div>
+        </div>
+        <div class="info-row keep" role="button" tabindex="0" data-copy="lab" data-name="Lab" title="Click to copy Lab. Double-click a number to type one." aria-label="Copy Lab">
+          <span class="cell" data-field="lab0" data-label="L*"><span class="k">L</span><span class="v" id="lab0"></span></span>
+          <span class="cell" data-field="lab1" data-label="a*"><span class="k">a</span><span class="v" id="lab1"></span></span>
+          <span class="cell" data-field="lab2" data-label="b*"><span class="k">b</span><span class="v" id="lab2"></span></span>
+        </div>
+        <div class="info-row" role="button" tabindex="0" data-copy="lch" data-name="LCh" title="Click to copy LCh. Double-click a number to type one." aria-label="Copy LCh">
+          <span class="cell" data-field="lch0" data-label="L*"><span class="k">L</span><span class="v" id="lch0"></span></span>
+          <span class="cell" data-field="lch1" data-label="Chroma"><span class="k">C</span><span class="v" id="lch1"></span></span>
+          <span class="cell" data-field="lch2" data-label="Hue angle"><span class="k">h</span><span class="v" id="lch2"></span></span>
+        </div>
+        <div class="info-row" role="button" tabindex="0" data-copy="rgb" data-name="RGB" title="Click to copy RGB. Double-click a number to type one." aria-label="Copy RGB">
+          <span class="cell" data-field="rgb0" data-label="Red"><span class="k">R</span><span class="v" id="rgb0"></span></span>
+          <span class="cell" data-field="rgb1" data-label="Green"><span class="k">G</span><span class="v" id="rgb1"></span></span>
+          <span class="cell" data-field="rgb2" data-label="Blue"><span class="k">B</span><span class="v" id="rgb2"></span></span>
+        </div>
+        <div class="info-row keep" role="button" tabindex="0" data-copy="hsb" data-name="HSB" title="Click to copy HSB. Double-click a number to type one." aria-label="Copy HSB">
+          <span class="cell" data-field="hsb0" data-label="Hue"><span class="k">H</span><span class="v" id="hsb0"></span></span>
+          <span class="cell" data-field="hsb1" data-label="Saturation"><span class="k">S</span><span class="v" id="hsb1"></span></span>
+          <span class="cell" data-field="hsb2" data-label="Brightness"><span class="k">B</span><span class="v" id="hsb2"></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lift">
+    <div class="ticks" id="ticks" aria-label="Value steps"></div>
+    <div class="track" id="track" tabindex="0" role="slider" aria-orientation="vertical" aria-label="Lightness L*" aria-valuemin="0" aria-valuemax="100" aria-valuenow="60">
+      <canvas id="trackCanvas" width="1" height="256"></canvas>
+      <div class="thumb" id="thumb"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const R = 120;            // half-width of the a*b* plane
+  const EPS = 1e-4;         // gamut tolerance in linear light
+  const Xn = 0.95047, Zn = 1.08883; // D65
+  const $ = id => document.getElementById(id);
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+  /* ---------- colour math ---------- */
+  const finv = t => t > 6 / 29 ? t * t * t : 3 * (6 / 29) * (6 / 29) * (t - 4 / 29);
+  const f = t => t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116;
+  const decode = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const encode = c => { c = clamp(c, 0, 1); return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; };
+
+  function labToLin(L, a, b) {
+    const fy = (L + 16) / 116;
+    const X = Xn * finv(fy + a / 500), Y = finv(fy), Z = Zn * finv(fy - b / 200);
+    return [
+      3.2404542 * X - 1.5371385 * Y - 0.4985314 * Z,
+      -0.9692660 * X + 1.8760108 * Y + 0.0415560 * Z,
+      0.0556434 * X - 0.2040259 * Y + 1.0572252 * Z,
+    ];
+  }
+  function inGamut(L, a, b) {
+    const c = labToLin(L, a, b);
+    return c[0] >= -EPS && c[0] <= 1 + EPS && c[1] >= -EPS && c[1] <= 1 + EPS && c[2] >= -EPS && c[2] <= 1 + EPS;
+  }
+  // Pull chroma toward the neutral axis, holding L* and hue, until the colour fits sRGB.
+  function fit(L, a, b) {
+    if (inGamut(L, a, b)) return { a, b };
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2;
+      if (inGamut(L, a * mid, b * mid)) lo = mid; else hi = mid;
+    }
+    return { a: a * lo, b: b * lo };
+  }
+  function labToRgb8(L, a, b) {
+    return labToLin(L, a, b).map(c => Math.round(encode(c) * 255));
+  }
+  // Encoded sRGB in 0..1 to Lab. One RGB triple is one colour, so it fixes L* as well as a* and b*.
+  function rgbToLab(rgb) {
+    const [r, g, b] = rgb.map(decode);
+    const X = 0.4124564 * r + 0.3575761 * g + 0.1804375 * b;
+    const Y = 0.2126729 * r + 0.7151522 * g + 0.0721750 * b;
+    const Z = 0.0193339 * r + 0.1191920 * g + 0.9503041 * b;
+    const fx = f(X / Xn), fy = f(Y), fz = f(Z / Zn);
+    return { L: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+  }
+  const hex2 = v => v.toString(16).padStart(2, '0').toUpperCase();
+  const toHex = rgb => '#' + rgb.map(hex2).join('');
+  function parseHex(text) {
+    const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text.trim());
+    if (!m) return null;
+    let h = m[1];
+    if (h.length === 3) h = h.replace(/./g, ch => ch + ch);
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  }
+  function hsvToRgb(h, s, v) {
+    const k = n => (n + h / 60) % 6;
+    const ch = n => v - v * s * Math.max(0, Math.min(k(n), 4 - k(n), 1));
+    return [ch(5), ch(3), ch(1)];
+  }
+  // Takes encoded sRGB in 0..1.
+  function rgbToHsv(rgb) {
+    const [r, g, b] = rgb;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    let h = 0;
+    if (d > 0) {
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h = (h * 60 + 360) % 360;
+    }
+    return { h, s: max === 0 ? 0 : d / max, v: max };
+  }
+
+  /* ---------- storage (per-browser convenience only) ---------- */
+  const store = {
+    get(key) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
+    set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage unavailable */ } },
+  };
+
+  /* ---------- state ---------- */
+  // a and b are what was asked for; the colour shown is fit(L, a, b). Picking in the square stores
+  // the fitted colour, so only a lightness change can leave them apart.
+  const S = { L: 60, a: -30, b: -10, target: true, info: true, hexRgb: false };
+  const saved = store.get('cielab-picker.state');
+  if (saved && [saved.L, saved.a, saved.b].every(Number.isFinite)) {
+    S.L = clamp(saved.L, 0, 100); S.a = clamp(saved.a, -R, R); S.b = clamp(saved.b, -R, R);
+    if (typeof saved.target === 'boolean') S.target = saved.target;
+    if (typeof saved.info === 'boolean') S.info = saved.info;
+    if (typeof saved.hexRgb === 'boolean') S.hexRgb = saved.hexRgb;
+  }
+  let current = null; // text for copying
+  let view = null;    // the shown colour's numbers, as a starting point when one of them is typed over
+
+  /* ---------- elements ---------- */
+  const plane = $('plane'), surface = $('surface');
+  const planeCanvas = $('planeCanvas'), pctx = planeCanvas.getContext('2d');
+  const track = $('track'), trackCanvas = $('trackCanvas'), tctx = trackCanvas.getContext('2d');
+  const marker = $('marker'), info = $('info'), settings = $('settings');
+  const infoBtn = $('infoBtn'), cogBtn = $('cogBtn'), targetToggle = $('targetToggle'), hexToggle = $('hexToggle');
+
+  const GAMMA = new Uint8Array(4097);
+  for (let i = 0; i <= 4096; i++) GAMMA[i] = Math.round(encode(i / 4096) * 255);
+
+  /* ---------- rendering ---------- */
+  let planeImage = null, colX = null, rowZ = null;
+  function renderPlane() {
+    const w = planeCanvas.width, h = planeCanvas.height;
+    if (!planeImage || planeImage.width !== w || planeImage.height !== h) {
+      planeImage = pctx.createImageData(w, h);
+      colX = new Float64Array(w);
+      rowZ = new Float64Array(h);
+    }
+    const px = new Uint32Array(planeImage.data.buffer);
+    const fy = (S.L + 16) / 116, Y = finv(fy);
+    for (let x = 0; x < w; x++) colX[x] = Xn * finv(fy + (((x + 0.5) / w) * 2 - 1) * R / 500);
+    for (let y = 0; y < h; y++) rowZ[y] = Zn * finv(fy - (1 - ((y + 0.5) / h) * 2) * R / 200);
+    const hi = 1 + EPS;
+    let i = 0;
+    for (let y = 0; y < h; y++) {
+      const Z = rowZ[y];
+      const r0 = -1.5371385 * Y - 0.4985314 * Z;
+      const g0 = 1.8760108 * Y + 0.0415560 * Z;
+      const b0 = -0.2040259 * Y + 1.0572252 * Z;
+      for (let x = 0; x < w; x++, i++) {
+        const X = colX[x];
+        const r = 3.2404542 * X + r0, g = -0.9692660 * X + g0, b = 0.0556434 * X + b0;
+        if (r < -EPS || r > hi || g < -EPS || g > hi || b < -EPS || b > hi) { px[i] = 0; continue; }
+        const r8 = GAMMA[(clamp(r, 0, 1) * 4096 + 0.5) | 0];
+        const g8 = GAMMA[(clamp(g, 0, 1) * 4096 + 0.5) | 0];
+        const b8 = GAMMA[(clamp(b, 0, 1) * 4096 + 0.5) | 0];
+        px[i] = (255 << 24) | (b8 << 16) | (g8 << 8) | r8;
+      }
+    }
+    pctx.putImageData(planeImage, 0, 0);
+  }
+
+  function renderTrack() {
+    const h = trackCanvas.height;
+    const img = tctx.createImageData(1, h);
+    for (let y = 0; y < h; y++) {
+      const L = 100 * (1 - y / (h - 1));
+      const e = fit(L, S.a, S.b);
+      const rgb = labToRgb8(L, e.a, e.b);
+      img.data[y * 4] = rgb[0]; img.data[y * 4 + 1] = rgb[1]; img.data[y * 4 + 2] = rgb[2]; img.data[y * 4 + 3] = 255;
+    }
+    tctx.putImageData(img, 0, 0);
+  }
+
+  const fmt = (v, d) => { const s = v.toFixed(d); return /^-0(\.0+)?$/.test(s) ? s.slice(1) : s; };
+  let lastHue = 180;
+
+  function syncReadout() {
+    const e = fit(S.L, S.a, S.b);
+    const rgbF = labToLin(S.L, e.a, e.b).map(encode);
+    const rgb = rgbF.map(c => Math.round(c * 255));
+    const hex = toHex(rgb);
+    const C = Math.hypot(e.a, e.b);
+    const hLab = (Math.atan2(e.b, e.a) * 180 / Math.PI + 360) % 360;
+    // HSB comes from the unrounded colour so that a typed HSB value reads back as typed.
+    const hsv = rgbToHsv(rgbF);
+    if (hsv.s > 0.02 && hsv.v > 0.02) lastHue = hsv.h;
+    const hsb = [Math.round(lastHue) % 360, Math.round(hsv.s * 100), Math.round(hsv.v * 100)];
+    const rgbText = S.hexRgb ? rgb.map(hex2) : rgb;
+    view = { a: e.a, b: e.b, C, h: hLab, rgb, hsv: { h: lastHue, s: hsv.s, v: hsv.v } };
+
+    marker.style.left = ((e.a / R + 1) * 50) + '%';
+    marker.style.top = ((1 - e.b / R) * 50) + '%';
+    marker.style.background = hex;
+
+    $('thumb').style.top = (100 - S.L) + '%';
+    $('thumb').style.background = hex;
+    track.setAttribute('aria-valuenow', S.L.toFixed(1));
+    track.setAttribute('aria-valuetext', 'L* ' + S.L.toFixed(1) + ', value ' + (S.L / 10).toFixed(1) + ' of 10');
+    for (const btn of $('ticks').children) btn.setAttribute('aria-pressed', String(Math.abs(S.L - btn.dataset.step * 10) < 0.05));
+
+    $('swPicked').style.background = hex;
+    $('swGrey').style.background = toHex(labToRgb8(S.L, 0, 0));
+    $('infoHead').style.setProperty('--on', S.L >= 50 ? '#111' : '#fff');
+    $('vHex').textContent = hex;
+    $('vVal').textContent = (S.L / 10).toFixed(1);
+    const cells = (key, values) => values.forEach((v, i) => { $(key + i).textContent = v; });
+    cells('lab', [fmt(S.L, 1), fmt(e.a, 1), fmt(e.b, 1)]);
+    cells('lch', [fmt(S.L, 1), fmt(C, 1), C < 0.05 ? '–' : hLab.toFixed(0) + '°']);
+    cells('rgb', rgbText);
+    cells('hsb', [hsb[0] + '°', hsb[1] + '%', hsb[2] + '%']);
+
+    current = {
+      val: (S.L / 10).toFixed(1),
+      hex,
+      lab: fmt(S.L, 1) + ', ' + fmt(e.a, 1) + ', ' + fmt(e.b, 1),
+      lch: fmt(S.L, 1) + ', ' + fmt(C, 1) + ', ' + (C < 0.05 ? '0' : hLab.toFixed(0)),
+      rgb: rgbText.join(', '),
+      hsb: hsb.join(', '),
+    };
+  }
+
+  let planeDirty = true, queued = false, saveTimer = 0;
+  function request(planeChanged) {
+    if (planeChanged) planeDirty = true;
+    if (!queued) { queued = true; requestAnimationFrame(paint); }
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => store.set('cielab-picker.state', S), 300);
+  }
+  function paint() {
+    queued = false;
+    if (planeDirty) { renderPlane(); planeDirty = false; }
+    renderTrack();
+    syncReadout();
+  }
+
+  /* ---------- input: plane ---------- */
+  function pick(a, b) {
+    const e = fit(S.L, clamp(a, -R, R), clamp(b, -R, R));
+    S.a = e.a; S.b = e.b;
+    request(false);
+  }
+  function planeFromPointer(ev) {
+    const r = surface.getBoundingClientRect();
+    pick(((ev.clientX - r.left) / r.width * 2 - 1) * R, (1 - (ev.clientY - r.top) / r.height * 2) * R);
+  }
+  for (const el of [surface, track]) el.addEventListener('blur', () => el.classList.remove('quiet'));
+  surface.addEventListener('pointerdown', ev => {
+    surface.classList.add('quiet');
+    surface.setPointerCapture(ev.pointerId);
+    surface.focus({ preventScroll: true });
+    planeFromPointer(ev);
+    ev.preventDefault();
+  });
+  surface.addEventListener('pointermove', ev => { if (surface.hasPointerCapture(ev.pointerId)) planeFromPointer(ev); });
+  surface.addEventListener('keydown', ev => {
+    const step = ev.shiftKey ? 10 : 1;
+    const move = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key];
+    if (!move) return;
+    const e = fit(S.L, S.a, S.b);
+    pick(e.a + move[0] * step, e.b + move[1] * step);
+    ev.preventDefault();
+  });
+
+  /* ---------- input: lightness ---------- */
+  function setL(L) {
+    L = clamp(L, 0, 100);
+    if (L === S.L) return;
+    S.L = L;
+    request(true);
+  }
+  function trackFromPointer(ev) {
+    const r = track.getBoundingClientRect();
+    setL(100 * (1 - (ev.clientY - r.top) / r.height));
+  }
+  track.addEventListener('pointerdown', ev => {
+    track.classList.add('quiet');
+    track.setPointerCapture(ev.pointerId);
+    track.focus({ preventScroll: true });
+    trackFromPointer(ev);
+    ev.preventDefault();
+  });
+  track.addEventListener('pointermove', ev => { if (track.hasPointerCapture(ev.pointerId)) trackFromPointer(ev); });
+  track.addEventListener('keydown', ev => {
+    const delta = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 10, PageDown: -10 }[ev.key];
+    if (delta !== undefined) setL(S.L + (ev.shiftKey ? Math.sign(delta) * 10 : delta));
+    else if (ev.key === 'Home') setL(0);
+    else if (ev.key === 'End') setL(100);
+    else return;
+    ev.preventDefault();
+  });
+  for (let step = 10; step >= 0; step--) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = step;
+    btn.dataset.step = step;
+    btn.style.top = (100 - step * 10) + '%';
+    btn.setAttribute('aria-label', 'Value ' + step + ', L* ' + step * 10);
+    btn.addEventListener('click', () => setL(step * 10));
+    $('ticks').appendChild(btn);
+  }
+
+  /* ---------- tools ---------- */
+  function applyTools() {
+    marker.hidden = !S.target;
+    targetToggle.checked = S.target;
+    hexToggle.checked = S.hexRgb;
+    info.hidden = !S.info;
+    infoBtn.setAttribute('aria-pressed', String(S.info));
+  }
+  function openSettings(open) {
+    settings.hidden = !open;
+    cogBtn.setAttribute('aria-expanded', String(open));
+  }
+  infoBtn.addEventListener('click', () => { S.info = !S.info; applyTools(); request(false); });
+  cogBtn.addEventListener('click', () => openSettings(settings.hidden));
+  targetToggle.addEventListener('change', () => { S.target = targetToggle.checked; applyTools(); request(false); });
+  hexToggle.addEventListener('change', () => { S.hexRgb = hexToggle.checked; request(false); });
+  document.addEventListener('pointerdown', ev => {
+    if (!settings.hidden && !ev.target.closest('#settings, #cogBtn')) openSettings(false);
+  });
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape' && !settings.hidden) { openSettings(false); cogBtn.focus(); }
+  });
+
+  /* ---------- copy ---------- */
+  let footTimer = 0;
+  function say(text) {
+    const toast = $('toast');
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(footTimer);
+    footTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    const copy = async () => {
+      try {
+        await navigator.clipboard.writeText(current[btn.dataset.copy]);
+        say('Copied ' + btn.dataset.name + ': ' + current[btn.dataset.copy]);
+        btn.classList.add('copied');
+        clearTimeout(btn._t);
+        btn._t = setTimeout(() => btn.classList.remove('copied'), 700);
+      } catch (e) {
+        const range = document.createRange();
+        range.selectNodeContents(btn);
+        const sel = getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        say('Copy blocked. Selected: press Ctrl+C');
+      }
+    };
+    // The second click of a double-click starts typing instead, and clicks inside the field are its own.
+    btn.addEventListener('click', ev => { if (ev.detail < 2 && !ev.target.closest('.edit')) copy(); });
+    btn.addEventListener('keydown', ev => {
+      if (ev.target !== btn) return;
+      if (ev.key === 'Enter' || ev.key === ' ') { copy(); ev.preventDefault(); }
+      else if (ev.key === 'F2') { beginEdit(btn.matches('[data-field]') ? btn : btn.querySelector('[data-field]')); ev.preventDefault(); }
+    });
+  });
+
+  /* ---------- typing a value ---------- */
+  // Returns an error to show, or sets the colour and returns a note (possibly empty).
+  function applyField(field, text) {
+    const t = text.trim();
+    const setRgb = rgb => {
+      const lab = rgbToLab(rgb);
+      S.L = clamp(lab.L, 0, 100); S.a = lab.a; S.b = lab.b;
+      return { note: '' };
+    };
+    const setAB = (a, b) => {
+      const e = fit(S.L, clamp(a, -R, R), clamp(b, -R, R));
+      const reduced = Math.hypot(e.a - a, e.b - b) > 0.05;
+      S.a = e.a; S.b = e.b;
+      return { note: reduced ? 'Outside sRGB at this lightness. Showing the nearest colour of that hue.' : '' };
+    };
+
+    if (field === 'hex') {
+      const rgb = parseHex(t);
+      return rgb ? setRgb(rgb.map(v => v / 255)) : { error: 'Hex needs 3 or 6 digits, like #3A9E9B' };
+    }
+    const kind = field.slice(0, 3), i = Number(field[3]);
+    if (kind === 'rgb' && S.hexRgb) {
+      if (!/^[0-9a-f]{1,2}$/i.test(t)) return { error: 'Type 00 to FF' };
+      const rgb = view.rgb.slice();
+      rgb[i] = parseInt(t, 16);
+      return setRgb(rgb.map(v => v / 255));
+    }
+    const n = Number(t.replace(/[°%]/g, '').replace(',', '.'));
+    if (t === '' || !Number.isFinite(n)) return { error: 'Type a number' };
+    const turn = d => ((d % 360) + 360) % 360;
+
+    if (field === 'val') { S.L = clamp(n, 0, 10) * 10; return { note: '' }; }
+    if (field === 'lab0' || field === 'lch0') { S.L = clamp(n, 0, 100); return { note: '' }; }
+    if (field === 'lab1') return setAB(n, view.b);
+    if (field === 'lab2') return setAB(view.a, n);
+    if (kind === 'lch') {
+      const C = i === 1 ? Math.max(0, n) : view.C;
+      const h = (i === 2 ? turn(n) : view.h) * Math.PI / 180;
+      return setAB(C * Math.cos(h), C * Math.sin(h));
+    }
+    if (kind === 'rgb') {
+      const rgb = view.rgb.slice();
+      rgb[i] = clamp(Math.round(n), 0, 255);
+      return setRgb(rgb.map(v => v / 255));
+    }
+    const hsv = [view.hsv.h, view.hsv.s, view.hsv.v];
+    hsv[i] = i === 0 ? turn(n) : clamp(n, 0, 100) / 100;
+    if (i === 0) lastHue = hsv[0];
+    return setRgb(hsvToRgb(hsv[0], hsv[1], hsv[2]));
+  }
+
+  function beginEdit(holder) {
+    if (!holder || holder.querySelector('.edit')) return;
+    const shown = holder.querySelector('.v');
+    const input = document.createElement('input');
+    input.className = 'edit';
+    input.type = 'text';
+    input.spellcheck = false;
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', holder.dataset.label);
+    const hexy = holder.dataset.field === 'hex' || (S.hexRgb && holder.dataset.field.startsWith('rgb'));
+    input.inputMode = hexy ? 'text' : 'decimal';
+    input.value = shown.textContent.replace(/[°%–]/g, '').trim();
+    let done = false;
+    const close = () => {
+      done = true;
+      input.remove();
+      shown.hidden = false;
+    };
+    const commit = keepOpenOnError => {
+      if (done) return;
+      const result = applyField(holder.dataset.field, input.value);
+      if (result.error) {
+        if (keepOpenOnError) { say(result.error); input.select(); } else close();
+        return;
+      }
+      close();
+      request(true);
+      if (result.note) say(result.note);
+    };
+    input.addEventListener('keydown', ev => {
+      ev.stopPropagation();
+      if (ev.key === 'Enter') { commit(true); ev.preventDefault(); }
+      else if (ev.key === 'Escape') { close(); ev.preventDefault(); }
+    });
+    input.addEventListener('blur', () => commit(false));
+    shown.hidden = true;
+    holder.appendChild(input);
+    $('toast').classList.remove('show');
+    input.focus();
+    input.select();
+  }
+  document.querySelector('.card').addEventListener('dblclick', ev => {
+    if (ev.target.closest('.edit')) return;
+    beginEdit(ev.target.closest('[data-field]'));
+    ev.preventDefault();
+  });
+
+  /* ---------- sizing ---------- */
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const size = clamp(Math.round(plane.clientWidth * dpr), 200, 1100);
+    if (planeCanvas.width !== size) { planeCanvas.width = size; planeCanvas.height = size; request(true); }
+  }
+  if ('ResizeObserver' in window) new ResizeObserver(resize).observe(plane);
+  else window.addEventListener('resize', resize);
+
+  applyTools();
+  resize();
+  request(true);
+})();
+</script>
+</body>
+</html>
