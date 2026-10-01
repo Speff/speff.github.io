@@ -185,11 +185,11 @@ button, input { font: inherit; color: inherit; }
 .switch input:checked { background: var(--ink); }
 .switch input:checked::after { transform: translateX(12px); background: var(--well); }
 
-/* Values card. Across all lightnesses the sRGB gamut never enters a triangle in the square's
+/* Values card. Across all lightnesses the gamut never enters a triangle in the square's
    bottom-left (below the cyan-to-blue edge), so the card is sized to stay inside it and never
-   covers colour. Measured by projecting the sRGB cube's surface onto a*b*: with a 10px inset, a
-   188px-wide card fits at 30px tall from a 292px square, 84px from 380px, 138px from 462px. Rows
-   are added as the square grows past those sizes. */
+   covers colour. Measured by projecting the surface of the RGB cube onto a*b* (square at ±128,
+   10px inset, 188px-wide card), taking the larger Display P3 gamut: 30px tall fits from a 292px
+   square, 82px from 386px, 134px from 474px. Rows are added as the square grows past those sizes. */
 .plane { container-type: inline-size; }
 .info { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px); }
 .card { display: grid; width: 188px; max-width: 100%; border-radius: 10px; overflow: hidden; touch-action: manipulation; }
@@ -241,7 +241,7 @@ button, input { font: inherit; color: inherit; }
 @container (min-width: 388px) {
   .card .info-row.keep { display: grid; }
 }
-@container (min-width: 470px) {
+@container (min-width: 476px) {
   .card .info-row { display: grid; }
 }
 
@@ -329,14 +329,15 @@ button, input { font: inherit; color: inherit; }
 
     <div class="settings glass" id="settings" hidden>
       <label class="switch" for="targetToggle">Target circle <input type="checkbox" id="targetToggle" role="switch" checked></label>
-      <label class="switch" for="hexToggle">RGB in hex <input type="checkbox" id="hexToggle" role="switch"></label>    </div>
+      <label class="switch" for="hexToggle">RGB in hex <input type="checkbox" id="hexToggle" role="switch"></label>
+      <label class="switch" for="p3Toggle" id="p3Label">Display P3 <input type="checkbox" id="p3Toggle" role="switch"></label>    </div>
 
     <div class="info" id="info">
       <div class="toast glass" id="toast" role="status"></div>
       <div class="card glass">
         <!-- Click copies; double-click (or F2) on a number swaps it for a field to type in. -->
         <div class="info-head" id="infoHead">
-          <div class="swatch" id="swPicked" role="button" tabindex="0" data-copy="hex" data-name="hex" data-field="hex" data-label="Hex" title="Click to copy hex. Double-click to type one." aria-label="Copy hex"><span class="v" id="vHex"></span></div>
+          <div class="swatch" id="swPicked" role="button" tabindex="0" data-copy="hex" data-name="hex" data-field="hex" data-label="Hex" title="Click to copy hex. Double-click to type one." aria-label="Copy hex"><span class="k" id="spaceTag" hidden>P3</span><span class="v" id="vHex"></span></div>
           <div class="swatch" id="swGrey" role="button" tabindex="0" data-copy="val" data-name="value" data-field="val" data-label="Value, 0 to 10" title="Grey of the same L*. Click to copy the value. Double-click to type one." aria-label="Copy value"><span class="k">Val</span><span class="v" id="vVal"></span></div>
         </div>
         <div class="info-row keep" role="button" tabindex="0" data-copy="lab" data-name="Lab" title="Click to copy Lab. Double-click a number to type one." aria-label="Copy Lab">
@@ -376,7 +377,7 @@ button, input { font: inherit; color: inherit; }
 (() => {
   'use strict';
 
-  const R = 120;            // half-width of the a*b* plane
+  const R = 128;            // half-width of the a*b* plane; Display P3 reaches b* 125
   const EPS = 1e-4;         // gamut tolerance in linear light
   const Xn = 0.95047, Zn = 1.08883; // D65
   const $ = id => document.getElementById(id);
@@ -388,20 +389,38 @@ button, input { font: inherit; color: inherit; }
   const decode = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   const encode = c => { c = clamp(c, 0, 1); return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; };
 
+  // The two RGB spaces the page can work in. Both use D65 white and the same transfer curve, so
+  // they differ only in their primaries: these matrices convert linear RGB to and from XYZ.
+  // P3 values are from CSS Color 4.
+  const SPACES = {
+    srgb: {
+      name: 'sRGB',
+      fromXYZ: [[3.2404542, -1.5371385, -0.4985314], [-0.9692660, 1.8760108, 0.0415560], [0.0556434, -0.2040259, 1.0572252]],
+      toXYZ: [[0.4124564, 0.3575761, 0.1804375], [0.2126729, 0.7151522, 0.0721750], [0.0193339, 0.1191920, 0.9503041]],
+    },
+    p3: {
+      name: 'Display P3',
+      fromXYZ: [[2.4934969119414254, -0.9313836179191239, -0.40271078445071684], [-0.8294889695615747, 1.7626640603183463, 0.023624685841943577], [0.03584583024378447, -0.07617238926804182, 0.9568845240076872]],
+      toXYZ: [[0.4865709486482162, 0.26566769316909306, 0.1982172852343625], [0.2289745640697488, 0.6917385218365064, 0.079286914093745], [0, 0.04511338185890264, 1.043944368900976]],
+    },
+  };
+  let SP = SPACES.srgb; // the space in use; set from S.p3
+
   function labToLin(L, a, b) {
     const fy = (L + 16) / 116;
     const X = Xn * finv(fy + a / 500), Y = finv(fy), Z = Zn * finv(fy - b / 200);
+    const m = SP.fromXYZ;
     return [
-      3.2404542 * X - 1.5371385 * Y - 0.4985314 * Z,
-      -0.9692660 * X + 1.8760108 * Y + 0.0415560 * Z,
-      0.0556434 * X - 0.2040259 * Y + 1.0572252 * Z,
+      m[0][0] * X + m[0][1] * Y + m[0][2] * Z,
+      m[1][0] * X + m[1][1] * Y + m[1][2] * Z,
+      m[2][0] * X + m[2][1] * Y + m[2][2] * Z,
     ];
   }
   function inGamut(L, a, b) {
     const c = labToLin(L, a, b);
     return c[0] >= -EPS && c[0] <= 1 + EPS && c[1] >= -EPS && c[1] <= 1 + EPS && c[2] >= -EPS && c[2] <= 1 + EPS;
   }
-  // Pull chroma toward the neutral axis, holding L* and hue, until the colour fits sRGB.
+  // Pull chroma toward the neutral axis, holding L* and hue, until the colour fits the RGB space.
   function fit(L, a, b) {
     if (inGamut(L, a, b)) return { a, b };
     let lo = 0, hi = 1;
@@ -414,12 +433,14 @@ button, input { font: inherit; color: inherit; }
   function labToRgb8(L, a, b) {
     return labToLin(L, a, b).map(c => Math.round(encode(c) * 255));
   }
-  // Encoded sRGB in 0..1 to Lab. One RGB triple is one colour, so it fixes L* as well as a* and b*.
+  // Encoded RGB in 0..1 (in the space in use) to Lab. One RGB triple is one colour, so it fixes L*
+  // as well as a* and b*.
   function rgbToLab(rgb) {
     const [r, g, b] = rgb.map(decode);
-    const X = 0.4124564 * r + 0.3575761 * g + 0.1804375 * b;
-    const Y = 0.2126729 * r + 0.7151522 * g + 0.0721750 * b;
-    const Z = 0.0193339 * r + 0.1191920 * g + 0.9503041 * b;
+    const m = SP.toXYZ;
+    const X = m[0][0] * r + m[0][1] * g + m[0][2] * b;
+    const Y = m[1][0] * r + m[1][1] * g + m[1][2] * b;
+    const Z = m[2][0] * r + m[2][1] * g + m[2][2] * b;
     const fx = f(X / Xn), fy = f(Y), fz = f(Z / Zn);
     return { L: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
   }
@@ -437,7 +458,7 @@ button, input { font: inherit; color: inherit; }
     const ch = n => v - v * s * Math.max(0, Math.min(k(n), 4 - k(n), 1));
     return [ch(5), ch(3), ch(1)];
   }
-  // Takes encoded sRGB in 0..1.
+  // Takes encoded RGB in 0..1.
   function rgbToHsv(rgb) {
     const [r, g, b] = rgb;
     const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
@@ -460,33 +481,54 @@ button, input { font: inherit; color: inherit; }
   /* ---------- state ---------- */
   // a and b are what was asked for; the colour shown is fit(L, a, b). Picking in the square stores
   // the fitted colour, so only a lightness change can leave them apart.
-  const S = { L: 60, a: -30, b: -10, target: true, info: true, hexRgb: false };
+  const S = { L: 60, a: -30, b: -10, target: true, info: true, hexRgb: false, p3: false };
   const saved = store.get('cielab-picker.state');
   if (saved && [saved.L, saved.a, saved.b].every(Number.isFinite)) {
     S.L = clamp(saved.L, 0, 100); S.a = clamp(saved.a, -R, R); S.b = clamp(saved.b, -R, R);
     if (typeof saved.target === 'boolean') S.target = saved.target;
     if (typeof saved.info === 'boolean') S.info = saved.info;
     if (typeof saved.hexRgb === 'boolean') S.hexRgb = saved.hexRgb;
+    if (typeof saved.p3 === 'boolean') S.p3 = saved.p3;
   }
   let current = null; // text for copying
   let view = null;    // the shown colour's numbers, as a starting point when one of them is typed over
 
   /* ---------- elements ---------- */
   const plane = $('plane'), surface = $('surface');
-  const planeCanvas = $('planeCanvas'), pctx = planeCanvas.getContext('2d');
-  const track = $('track'), trackCanvas = $('trackCanvas'), tctx = trackCanvas.getContext('2d');
+  const p3Context = c => {
+    try { return c.getContext('2d', { colorSpace: 'display-p3' }) || c.getContext('2d'); } catch (e) { return c.getContext('2d'); }
+  };
+  const planeCanvas = $('planeCanvas'), pctx = p3Context(planeCanvas);
+  const track = $('track'), trackCanvas = $('trackCanvas'), tctx = p3Context(trackCanvas);
+  // Whether this browser can draw P3 colours at all. Without it, P3 colours would be clipped to
+  // sRGB on screen while their numbers claimed otherwise, so the switch is turned off.
+  const canDrawP3 = (() => {
+    try {
+      return pctx.getContextAttributes().colorSpace === 'display-p3' && tctx.getContextAttributes().colorSpace === 'display-p3'
+        && CSS.supports('color', 'color(display-p3 1 0 0)');
+    } catch (e) { return false; }
+  })();
+  const screenIsP3 = (() => { try { return matchMedia('(color-gamut: p3)').matches; } catch (e) { return false; } })();
+  if (!canDrawP3) S.p3 = false;
+  SP = S.p3 ? SPACES.p3 : SPACES.srgb;
+  const imageData = (ctx, w, h) => canDrawP3 ? ctx.createImageData(w, h, { colorSpace: S.p3 ? 'display-p3' : 'srgb' }) : ctx.createImageData(w, h);
+  // Colour for CSS, from encoded RGB in 0..1 in the space in use.
+  const cssColor = rgbF => S.p3
+    ? 'color(display-p3 ' + rgbF.map(c => clamp(c, 0, 1).toFixed(4)).join(' ') + ')'
+    : toHex(rgbF.map(c => Math.round(clamp(c, 0, 1) * 255)));
   const marker = $('marker'), info = $('info'), settings = $('settings');
-  const infoBtn = $('infoBtn'), cogBtn = $('cogBtn'), targetToggle = $('targetToggle'), hexToggle = $('hexToggle');
+  const infoBtn = $('infoBtn'), cogBtn = $('cogBtn'), targetToggle = $('targetToggle'), hexToggle = $('hexToggle'), p3Toggle = $('p3Toggle');
 
   const GAMMA = new Uint8Array(4097);
   for (let i = 0; i <= 4096; i++) GAMMA[i] = Math.round(encode(i / 4096) * 255);
 
   /* ---------- rendering ---------- */
-  let planeImage = null, colX = null, rowZ = null;
+  let planeImage = null, planeSpace = null, colX = null, rowZ = null;
   function renderPlane() {
     const w = planeCanvas.width, h = planeCanvas.height;
-    if (!planeImage || planeImage.width !== w || planeImage.height !== h) {
-      planeImage = pctx.createImageData(w, h);
+    if (!planeImage || planeImage.width !== w || planeImage.height !== h || planeSpace !== SP) {
+      planeImage = imageData(pctx, w, h);
+      planeSpace = SP;
       colX = new Float64Array(w);
       rowZ = new Float64Array(h);
     }
@@ -495,15 +537,16 @@ button, input { font: inherit; color: inherit; }
     for (let x = 0; x < w; x++) colX[x] = Xn * finv(fy + (((x + 0.5) / w) * 2 - 1) * R / 500);
     for (let y = 0; y < h; y++) rowZ[y] = Zn * finv(fy - (1 - ((y + 0.5) / h) * 2) * R / 200);
     const hi = 1 + EPS;
+    const [m0, m1, m2] = SP.fromXYZ;
     let i = 0;
     for (let y = 0; y < h; y++) {
       const Z = rowZ[y];
-      const r0 = -1.5371385 * Y - 0.4985314 * Z;
-      const g0 = 1.8760108 * Y + 0.0415560 * Z;
-      const b0 = -0.2040259 * Y + 1.0572252 * Z;
+      const r0 = m0[1] * Y + m0[2] * Z;
+      const g0 = m1[1] * Y + m1[2] * Z;
+      const b0 = m2[1] * Y + m2[2] * Z;
       for (let x = 0; x < w; x++, i++) {
         const X = colX[x];
-        const r = 3.2404542 * X + r0, g = -0.9692660 * X + g0, b = 0.0556434 * X + b0;
+        const r = m0[0] * X + r0, g = m1[0] * X + g0, b = m2[0] * X + b0;
         if (r < -EPS || r > hi || g < -EPS || g > hi || b < -EPS || b > hi) { px[i] = 0; continue; }
         const r8 = GAMMA[(clamp(r, 0, 1) * 4096 + 0.5) | 0];
         const g8 = GAMMA[(clamp(g, 0, 1) * 4096 + 0.5) | 0];
@@ -516,7 +559,7 @@ button, input { font: inherit; color: inherit; }
 
   function renderTrack() {
     const h = trackCanvas.height;
-    const img = tctx.createImageData(1, h);
+    const img = imageData(tctx, 1, h);
     for (let y = 0; y < h; y++) {
       const L = 100 * (1 - y / (h - 1));
       const e = fit(L, S.a, S.b);
@@ -545,16 +588,18 @@ button, input { font: inherit; color: inherit; }
 
     marker.style.left = ((e.a / R + 1) * 50) + '%';
     marker.style.top = ((1 - e.b / R) * 50) + '%';
-    marker.style.background = hex;
+    const css = cssColor(rgbF);
+    marker.style.background = css;
 
     $('thumb').style.top = (100 - S.L) + '%';
-    $('thumb').style.background = hex;
+    $('thumb').style.background = css;
     track.setAttribute('aria-valuenow', S.L.toFixed(1));
     track.setAttribute('aria-valuetext', 'L* ' + S.L.toFixed(1) + ', value ' + (S.L / 10).toFixed(1) + ' of 10');
     for (const btn of $('ticks').children) btn.setAttribute('aria-pressed', String(Math.abs(S.L - btn.dataset.step * 10) < 0.05));
 
-    $('swPicked').style.background = hex;
-    $('swGrey').style.background = toHex(labToRgb8(S.L, 0, 0));
+    $('swPicked').style.background = css;
+    $('swGrey').style.background = cssColor(labToLin(S.L, 0, 0).map(encode));
+    $('spaceTag').hidden = !S.p3;
     $('infoHead').style.setProperty('--on', S.L >= 50 ? '#111' : '#fff');
     $('vHex').textContent = hex;
     $('vVal').textContent = (S.L / 10).toFixed(1);
@@ -659,6 +704,7 @@ button, input { font: inherit; color: inherit; }
     marker.hidden = !S.target;
     targetToggle.checked = S.target;
     hexToggle.checked = S.hexRgb;
+    p3Toggle.checked = S.p3;
     info.hidden = !S.info;
     infoBtn.setAttribute('aria-pressed', String(S.info));
   }
@@ -670,6 +716,20 @@ button, input { font: inherit; color: inherit; }
   cogBtn.addEventListener('click', () => openSettings(settings.hidden));
   targetToggle.addEventListener('change', () => { S.target = targetToggle.checked; applyTools(); request(false); });
   hexToggle.addEventListener('change', () => { S.hexRgb = hexToggle.checked; request(false); });
+  if (!canDrawP3) {
+    p3Toggle.disabled = true;
+    $('p3Label').title = 'This browser cannot draw Display P3 colours.';
+  } else {
+    $('p3Label').title = 'Work in the Display P3 gamut, which most wide-gamut screens and the iPad use. Hex, RGB and HSB are then P3 values.'
+      + (screenIsP3 ? '' : ' This screen reports an sRGB gamut, so colours beyond sRGB will look clipped here.');
+  }
+  p3Toggle.addEventListener('change', () => {
+    // The Lab colour stays; its RGB numbers change because they are now in the other space.
+    S.p3 = p3Toggle.checked;
+    SP = S.p3 ? SPACES.p3 : SPACES.srgb;
+    request(true);
+    if (S.p3 && !screenIsP3) say('This screen reports an sRGB gamut, so colours beyond sRGB will look clipped here.');
+  });
   document.addEventListener('pointerdown', ev => {
     if (!settings.hidden && !ev.target.closest('#settings, #cogBtn')) openSettings(false);
   });
@@ -725,7 +785,7 @@ button, input { font: inherit; color: inherit; }
       const e = fit(S.L, clamp(a, -R, R), clamp(b, -R, R));
       const reduced = Math.hypot(e.a - a, e.b - b) > 0.05;
       S.a = e.a; S.b = e.b;
-      return { note: reduced ? 'Outside sRGB at this lightness. Showing the nearest colour of that hue.' : '' };
+      return { note: reduced ? 'Outside ' + SP.name + ' at this lightness. Showing the nearest colour of that hue.' : '' };
     };
 
     if (field === 'hex') {
