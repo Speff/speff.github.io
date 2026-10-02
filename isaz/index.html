@@ -1,0 +1,1443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Isaz</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500&display=swap">
+<style>
+:root {
+  --ground: #cbcbcb;
+  --paper: #e3e3e3;
+  --line: #a3a3a3;
+  --ink: #161616;
+  --ink-2: #4d4d4d;
+  --ref: #6b6b6b;
+  --target: #c4560e;
+  --measure: #2563c9; /* the true length laid beside yours: not the true shape, so not orange */
+  --focus: #000000;
+  --glass: rgba(226, 226, 226, 0.9);
+  --glass-line: rgba(0, 0, 0, 0.22);
+  --hover: rgba(0, 0, 0, 0.07);
+  --flash: rgba(0, 0, 0, 0.14);
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  --sans: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #1b1b1b;
+    --paper: #282828;
+    --line: #404040;
+    --ink: #ececec;
+    --ink-2: #a3a3a3;
+    --ref: #939393;
+    --target: #f08a3c;
+    --measure: #6ea8ff;
+    --focus: #ffffff;
+    --glass: rgba(34, 34, 34, 0.88);
+    --glass-line: rgba(255, 255, 255, 0.16);
+    --hover: rgba(255, 255, 255, 0.07);
+    --flash: rgba(255, 255, 255, 0.16);
+    --shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #1b1b1b;
+  --paper: #282828;
+  --line: #404040;
+  --ink: #ececec;
+  --ink-2: #a3a3a3;
+  --ref: #939393;
+  --target: #f08a3c;
+  --measure: #6ea8ff;
+  --focus: #ffffff;
+  --glass: rgba(34, 34, 34, 0.88);
+  --glass-line: rgba(255, 255, 255, 0.16);
+  --hover: rgba(255, 255, 255, 0.07);
+  --flash: rgba(255, 255, 255, 0.16);
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 15px/1.35 var(--sans);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input { font: inherit; color: inherit; }
+button { touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.app {
+  height: 100%;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+
+/* ---------- top: the instructions, centred; settings at the right ---------- */
+.top { position: relative; display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 52px; }
+.prompt { font-size: 19px; line-height: 1.3; text-align: center; }
+.corner { position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: center; }
+.sw { display: inline-block; vertical-align: middle; position: relative; top: -1px; width: 20px; height: 3px; margin: 0 4px 0 2px; background: var(--c); }
+.sw.ref { --c: var(--ref); }
+.sw.target { --c: var(--target); }
+.sw.pts {
+  width: 18px;
+  height: 7px;
+  background:
+    radial-gradient(circle, var(--c) 3px, transparent 3.5px) 0 0 / 7px 7px no-repeat,
+    radial-gradient(circle, var(--c) 3px, transparent 3.5px) 11px 0 / 7px 7px no-repeat;
+}
+
+/* ---------- panels: the shape, and your copy beside it ---------- */
+.panels { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; min-height: 0; }
+@media (max-aspect-ratio: 1/1) {
+  .panels { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+}
+.panel {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.panel canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#copy canvas { cursor: crosshair; }
+#copy.erasing canvas { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%23888' stroke-width='1.5'/%3E%3C/svg%3E") 10 10, crosshair; }
+#stim.marking canvas { cursor: crosshair; }
+.panel.dropping { outline: 2px solid var(--target); outline-offset: -2px; }
+
+/* Each panel's tools sit in its top-left corner, its legend (once scored) in its bottom-right. */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+}
+.toolbar { position: absolute; z-index: 2; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 2px; padding: 3px; border-radius: 11px; }
+.tool-sep { height: 1px; margin: 3px 5px; background: var(--glass-line); }
+.tool {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.tool:hover:not(:disabled) { background: var(--hover); color: var(--ink); }
+.tool:active:not(:disabled) { transform: scale(0.94); }
+.tool[aria-pressed="true"], .tool[aria-expanded="true"] { background: var(--ink); color: var(--paper); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+.tool:disabled { opacity: 0.35; cursor: default; }
+.tool svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tool .dot-ref { fill: var(--ref); stroke: none; }
+.tool .dot-target { fill: var(--target); stroke: none; }
+#cogBtn[aria-expanded="true"] svg { transform: rotate(60deg); }
+
+.legend { position: absolute; z-index: 2; right: 10px; bottom: 10px; display: grid; gap: 5px; padding: 8px 11px; border-radius: 10px; font-size: 13px; pointer-events: none; }
+.lg-row { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
+.lg { position: relative; flex: none; display: inline-block; width: 22px; height: 10px; }
+.lg::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 3px; margin-top: -1.5px; background: var(--c); }
+.lg.faint::before { height: 1.5px; margin-top: -0.75px; opacity: 0.45; }
+.lg.dash::before { height: 1.5px; margin-top: -0.75px; background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px); }
+.lg.bar::after { content: ""; position: absolute; inset: 0; border-left: 2px solid var(--c); border-right: 2px solid var(--c); }
+.lg.ruler::before { height: 1.5px; margin-top: -0.75px; }
+.lg.ruler::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(var(--c), var(--c)) left / 1.5px 100% no-repeat,
+    linear-gradient(var(--c), var(--c)) center / 1.5px 100% no-repeat,
+    linear-gradient(var(--c), var(--c)) right / 1.5px 100% no-repeat;
+}
+.lg.dots::before {
+  height: 8px;
+  margin-top: -4px;
+  background:
+    radial-gradient(circle, var(--c) 3.2px, transparent 3.7px) 0 0 / 8px 8px no-repeat,
+    radial-gradient(circle, var(--c) 3.2px, transparent 3.7px) 14px 0 / 8px 8px no-repeat;
+}
+
+/* Your image, before there is one. */
+.dropzone {
+  position: absolute;
+  inset: 22px 22px 22px 66px; /* clear of the toolbar on the left */
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 17px;
+  color: var(--ink-2);
+}
+.dz-actions { display: flex; gap: 10px; }
+.toast { position: absolute; z-index: 3; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 7px 13px; border-radius: 9px; font-size: 14px; white-space: nowrap; opacity: 0; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+/* No exercise selected. */
+.empty-card { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; pointer-events: none; }
+.empty-card .card { display: grid; justify-items: center; gap: 16px; padding: 22px 28px; border-radius: 12px; text-align: center; font-size: 18px; color: var(--ink-2); pointer-events: auto; }
+
+/* ---------- bottom: the score, centred, with the button under it ---------- */
+.bottom { display: grid; justify-items: center; gap: 8px; }
+.score { min-height: 56px; display: grid; align-content: center; justify-items: center; gap: 2px; text-align: center; }
+.score .headline { font: 500 24px/1.2 var(--sans); font-variant-numeric: tabular-nums; }
+.score .detail { font-size: 14px; color: var(--ink-2); }
+.score .detail b { font: 500 14px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.sep { color: var(--ink-2); margin: 0 9px; }
+.actions { display: flex; justify-content: center; align-items: center; gap: 10px; }
+.btn {
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  font: 500 16px/1 var(--sans);
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { background-image: linear-gradient(var(--hover), var(--hover)); }
+.btn.primary { min-width: 132px; border: 0; background: var(--ink); color: var(--paper); font-size: 17px; }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.3; cursor: default; }
+
+/* ---------- settings ---------- */
+.settings {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  top: calc(100% + 6px);
+  width: 230px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  display: grid;
+  gap: 9px;
+}
+.group { margin-top: 4px; font: 500 11px/1.2 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+.switch { display: flex; gap: 14px; align-items: center; justify-content: space-between; cursor: pointer; white-space: nowrap; }
+.switch input {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  border-radius: 9px;
+  background: var(--flash);
+  cursor: pointer;
+}
+.switch input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink-2);
+}
+.switch input:checked { background: var(--ink); }
+.switch input:checked::after { transform: translateX(12px); background: var(--paper); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tool { transition: background 0.14s, color 0.14s, transform 0.1s; }
+  #cogBtn svg { transition: transform 0.25s; }
+  .switch input { transition: background 0.15s; }
+  .switch input::after { transition: transform 0.15s, background 0.15s; }
+  .toast { transition: opacity 0.2s; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="prompt" id="prompt" aria-live="polite"></div>
+    <div class="corner">
+      <button type="button" class="tool" id="cogBtn" aria-expanded="false" aria-controls="settings" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
+    </div>
+    <div class="settings glass" id="settings" hidden>
+      <label class="switch" title="The Draw tool takes a freehand stroke and straightens it when you let go, instead of dragging a line out straight">Freehand lines <input type="checkbox" role="switch" id="freehandToggle"></label>
+      <div class="group">Lengths</div>
+      <label class="switch">Lines <input type="checkbox" role="switch" data-kind="lines"></label>
+      <label class="switch">Rectangles <input type="checkbox" role="switch" data-kind="rects"></label>
+      <label class="switch">Ellipses <input type="checkbox" role="switch" data-kind="ellipses"></label>
+      <label class="switch">Points <input type="checkbox" role="switch" data-kind="points"></label>
+      <div class="group">Angles</div>
+      <label class="switch">Tilt <input type="checkbox" role="switch" data-kind="tilt"></label>
+      <label class="switch">Corners <input type="checkbox" role="switch" data-kind="corner"></label>
+      <div class="group">Your own</div>
+      <label class="switch" title="Points between two lines you mark on a picture of your own">Your image <input type="checkbox" role="switch" data-kind="image"></label>
+    </div>
+  </header>
+
+  <main class="panels">
+    <section class="panel" id="stim">
+      <canvas id="stimCanvas" role="img" aria-label="The shape to judge"></canvas>
+      <div class="toolbar glass" id="refTools" hidden>
+        <button type="button" class="tool" data-ref-tool="given" aria-pressed="false" title="Mark the reference line: its two points are given in your copy" aria-label="Mark the reference line">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6" stroke-dasharray="2 3"></line><circle class="dot-ref" cx="6" cy="18" r="3.2"></circle><circle class="dot-ref" cx="18" cy="6" r="3.2"></circle></svg>
+        </button>
+        <button type="button" class="tool" data-ref-tool="target" aria-pressed="false" title="Mark the target line: its two points are the ones you draw" aria-label="Mark the target line">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6" stroke-dasharray="2 3"></line><circle class="dot-target" cx="6" cy="18" r="3.2"></circle><circle class="dot-target" cx="18" cy="6" r="3.2"></circle></svg>
+        </button>
+        <div class="tool-sep"></div>
+        <button type="button" class="tool" data-paste title="Paste an image from the clipboard" aria-label="Paste an image">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+        </button>
+        <button type="button" class="tool" data-open title="Open an image" aria-label="Open an image">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        </button>
+      </div>
+      <div class="dropzone" id="dropzone" hidden>
+        <div>Drop an image here</div>
+        <div class="dz-actions">
+          <button type="button" class="btn" data-paste>Paste</button>
+          <button type="button" class="btn" data-open>Open…</button>
+        </div>
+      </div>
+      <div class="legend glass" id="stimLegend" hidden></div>
+      <div class="toast glass" id="toast" role="status"></div>
+    </section>
+    <section class="panel" id="copy">
+      <canvas id="copyCanvas" role="img" aria-label="Drawing area for your copy"></canvas>
+      <div class="toolbar glass" id="drawTools" hidden>
+        <button type="button" class="tool" data-tool="draw" aria-pressed="true" title="Draw: lines that are scored (1)" aria-label="Draw scored lines">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="5" y1="19" x2="19" y2="5"></line><line x1="3" y1="17" x2="7" y2="21"></line><line x1="17" y1="3" x2="21" y2="7"></line></svg>
+        </button>
+        <button type="button" class="tool" data-tool="draft" aria-pressed="false" title="Draft: freehand marks to help you, never scored (2)" aria-label="Draft lines">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path></svg>
+        </button>
+        <button type="button" class="tool" data-tool="erase" aria-pressed="false" title="Erase: drag across a line to delete it (3)" aria-label="Eraser">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 8.5 11 16H6l-3.5-3.5a2 2 0 0 1 0-2.83l7-7a2 2 0 0 1 2.83 0l6.17 6.17a2 2 0 0 1 0 2.83L15 15"></path><path d="M8.5 10.5 14 16"></path><path d="M6 20h15"></path></svg>
+        </button>
+      </div>
+      <div class="legend glass" id="copyLegend" hidden></div>
+    </section>
+    <div class="empty-card" id="emptyCard" hidden>
+      <div class="card glass">
+        <div>Turn on an exercise to start</div>
+        <button type="button" class="btn" id="chooseBtn">Choose exercises</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bottom">
+    <div class="score" id="score" aria-live="polite"></div>
+    <div class="actions" id="actions">
+      <button type="button" class="btn" id="skipBtn" title="A new exercise, without scoring this one">Skip</button>
+      <button type="button" class="btn primary" id="goBtn" title="Enter">Check</button>
+    </div>
+  </footer>
+  <input type="file" id="fileInput" accept="image/*" hidden>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+  const DEG = 180 / Math.PI;
+  // Geometry is in units of a panel's shorter side, origin at its centre, y down. Shapes stay
+  // within ±M, so they fit a panel of any aspect ratio and survive a resize or rotation unchanged.
+  const M = 0.45;
+
+  /* ---------- vectors ---------- */
+  const add = (p, q) => [p[0] + q[0], p[1] + q[1]];
+  const sub = (p, q) => [p[0] - q[0], p[1] - q[1]];
+  const mul = (p, k) => [p[0] * k, p[1] * k];
+  const dot = (p, q) => p[0] * q[0] + p[1] * q[1];
+  const len = p => Math.hypot(p[0], p[1]);
+  const dist = (p, q) => len(sub(p, q));
+  const norm = p => mul(p, 1 / len(p));
+  const perp = p => [-p[1], p[0]];
+  const mid = s => mul(add(s.a, s.b), 0.5);
+  const dirOf = a => [Math.cos(a), Math.sin(a)];
+  const angOf = p => Math.atan2(p[1], p[0]);
+  const wrapPi = a => a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const logRand = (a, b) => Math.exp(rand(Math.log(a), Math.log(b)));
+  const pick = xs => xs[Math.floor(Math.random() * xs.length)];
+  const inside = p => Math.abs(p[0]) <= M && Math.abs(p[1]) <= M;
+  const shrink = i => Math.pow(0.97, Math.floor(i / 40)); // eases a placement that keeps failing
+
+  function ptSeg(p, a, b) {
+    const ab = sub(b, a);
+    if (!dot(ab, ab)) return dist(p, a);
+    const t = Math.max(0, Math.min(1, dot(sub(p, a), ab) / dot(ab, ab)));
+    return dist(p, add(a, mul(ab, t)));
+  }
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  function segDist(a, b, c, d) {
+    if (cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0) return 0;
+    return Math.min(ptSeg(a, c, d), ptSeg(b, c, d), ptSeg(c, a, b), ptSeg(d, a, b));
+  }
+
+  /* ---------- settings ---------- */
+  // Any or none may be on; with none, the page asks for one. Your image starts off.
+  const KINDS = ['lines', 'rects', 'ellipses', 'points', 'tilt', 'corner', 'image'];
+  const S = { freehand: false, kinds: Object.fromEntries(KINDS.map(k => [k, k !== 'image'])) };
+  try {
+    const saved = JSON.parse(localStorage.getItem('isaz.settings'));
+    if (saved && typeof saved.freehand === 'boolean') S.freehand = saved.freehand;
+    if (saved && saved.kinds) for (const k of KINDS) if (typeof saved.kinds[k] === 'boolean') S.kinds[k] = saved.kinds[k];
+  } catch (e) { /* storage unavailable: defaults */ }
+  function save() { try { localStorage.setItem('isaz.settings', JSON.stringify(S)); } catch (e) { /* ignore */ } }
+
+  /* ---------- exercises ---------- */
+  const seg = (a, b, role, cap = 'butt') => ({ type: 'seg', a, b, role, cap });
+  const dotAt = (p, role, r = 5) => ({ type: 'dot', p, role, r });
+  const stub = (p, d) => ({ type: 'stub', p, d, role: 'target' }); // a fixed 16px start of a target line
+  const isPair = k => k === 'points' || k === 'image'; // a dot pair given, a dot pair drawn
+
+  // A segment of length l at angle ang, placed at random wholly within ±M. Which end is `a` is random.
+  function placeSeg(l, ang) {
+    const h = mul(dirOf(ang), l / 2), ex = M - Math.abs(h[0]), ey = M - Math.abs(h[1]);
+    if (ex < 0 || ey < 0) return null;
+    const c = [rand(-ex, ex), rand(-ey, ey)];
+    return Math.random() < 0.5 ? { a: sub(c, h), b: add(c, h) } : { a: add(c, h), b: sub(c, h) };
+  }
+  // Half the lines are level or plumb, as so many are in a drawing.
+  const axisish = () => { const r = Math.random(); return r < 0.25 ? 0 : r < 0.5 ? Math.PI / 2 : rand(0, Math.PI); };
+
+  // The side of a segment facing the panel centre: overlays are offset that way to stay in view.
+  function towardCentre(s) {
+    const n = perp(norm(sub(s.b, s.a)));
+    return dot(n, mid(s)) > 0 ? mul(n, -1) : n;
+  }
+
+  // R is the reference (counted as 1), T the target. ratio = |T| / |R|.
+  function lengthTrial(kind, R, T, prims, extra = {}) {
+    const t = { kind, group: 'length', R, T, prims, ratio: dist(T.a, T.b) / dist(R.a, R.b), ...extra };
+    if (!t.n) t.n = towardCentre(T);
+    return t;
+  }
+
+  const GEN = {
+    lines() {
+      const q = logRand(0.2, 5);
+      for (let i = 0; ; i++) {
+        const big = rand(0.3, 0.85) * shrink(i), lr = q < 1 ? big : big / q;
+        const a1 = axisish(), a2 = Math.random() < 0.35 ? a1 : axisish();
+        const R = placeSeg(lr, a1), T = placeSeg(lr * q, a2);
+        if (!R || !T || segDist(R.a, R.b, T.a, T.b) < 0.07) continue;
+        return lengthTrial('lines', R, T, [seg(R.a, R.b, 'ref'), seg(T.a, T.b, 'target')]);
+      }
+    },
+
+    // The reference is one pair of opposite sides, the target the other pair.
+    rects() {
+      const q = logRand(0.25, 4);
+      for (let i = 0; ; i++) {
+        const big = rand(0.3, 0.75) * shrink(i), w = q < 1 ? big : big / q, h = w * q;
+        const ang = Math.random() < 0.5 ? pick([0, Math.PI / 2]) : rand(0, Math.PI);
+        const u = dirOf(ang), v = perp(u);
+        const ex = (Math.abs(u[0]) * w + Math.abs(v[0]) * h) / 2, ey = (Math.abs(u[1]) * w + Math.abs(v[1]) * h) / 2;
+        if (ex > M || ey > M) continue;
+        const c = [rand(-M + ex, M - ex), rand(-M + ey, M - ey)];
+        const BL = add(c, add(mul(u, -w / 2), mul(v, h / 2)));
+        const BR = add(BL, mul(u, w)), TL = sub(BL, mul(v, h)), TR = add(TL, mul(u, w));
+        return lengthTrial('rects', { a: BL, b: BR }, { a: BL, b: TL }, [
+          seg(BL, BR, 'ref', 'square'), seg(TL, TR, 'ref', 'square'),
+          seg(BL, TL, 'target', 'square'), seg(BR, TR, 'target', 'square'),
+        ], { corners: [BL, BR, TR, TL], n: mul(u, -1) });
+      }
+    },
+
+    // Reference: the long axis, drawn. Target: the width across it, read from the outline.
+    ellipses() {
+      const q = rand(0.1, 0.92);
+      for (let i = 0; ; i++) {
+        const rx = rand(0.45, 0.85) * shrink(i) / 2, ry = rx * q;
+        const r = Math.random(), ang = r < 0.5 ? 0 : r < 0.7 ? Math.PI / 2 : rand(0, Math.PI);
+        const co = Math.cos(ang), si = Math.sin(ang);
+        const ex = Math.hypot(rx * co, ry * si), ey = Math.hypot(rx * si, ry * co);
+        if (ex > M || ey > M) continue;
+        const c = [rand(-M + ex, M - ex), rand(-M + ey, M - ey)];
+        const u = dirOf(ang), v = perp(u);
+        const R = { a: sub(c, mul(u, rx)), b: add(c, mul(u, rx)) };
+        const T = { a: add(c, mul(v, ry)), b: sub(c, mul(v, ry)) };
+        return lengthTrial('ellipses', R, T, [{ type: 'ellipse', c, rx, ry, ang, ex, ey, role: 'target' }, seg(R.a, R.b, 'ref')], { ell: { c, rx, ry, ang } });
+      }
+    },
+
+    // Two pairs of dots, no lines between them: the distances are seen, not drawn, as between
+    // landmarks on a figure.
+    points() {
+      const q = logRand(0.25, 4);
+      for (let i = 0; ; i++) {
+        const big = rand(0.3, 0.8) * shrink(i), lr = q < 1 ? big : big / q;
+        const R = placeSeg(lr, rand(0, Math.PI)), T = placeSeg(lr * q, rand(0, Math.PI));
+        if (!R || !T) continue;
+        const ps = [R.a, R.b, T.a, T.b];
+        if (ps.some((p, j) => ps.some((o, k) => k > j && dist(p, o) < 0.08))) continue;
+        return lengthTrial('points', R, T, [dotAt(R.a, 'ref'), dotAt(R.b, 'ref'), dotAt(T.a, 'target'), dotAt(T.b, 'target')]);
+      }
+    },
+
+    // deg is the tilt from level, positive rising to the right.
+    tilt() {
+      let deg;
+      do { deg = rand(-90, 90); } while (Math.abs(deg) < 3 || Math.abs(deg) > 87);
+      const h = mul([Math.cos(deg / DEG), -Math.sin(deg / DEG)], rand(0.4, 0.8) / 2);
+      const c = [rand(-1, 1) * 0.6 * (M - Math.abs(h[0])), rand(-1, 1) * 0.6 * (M - Math.abs(h[1]))];
+      const line = { a: sub(c, h), b: add(c, h) };
+      return { kind: 'tilt', group: 'angle', deg, line, prims: [seg(line.a, line.b, 'target', 'round')] };
+    },
+
+    // Two arms from a vertex V. side is which way arm B turns from arm A.
+    corner() {
+      let alpha;
+      do { alpha = rand(12, 168); } while (Math.abs(alpha - 90) < 3);
+      for (let i = 0; ; i++) {
+        const rotA = rand(0, 2 * Math.PI), side = pick([1, -1]);
+        const V = [rand(-0.25, 0.25), rand(-0.25, 0.25)];
+        const A = add(V, mul(dirOf(rotA), rand(0.25, 0.42) * shrink(i)));
+        const B = add(V, mul(dirOf(rotA + side * alpha / DEG), rand(0.25, 0.42) * shrink(i)));
+        if (!inside(A) || !inside(B)) continue;
+        return {
+          kind: 'corner', group: 'angle', alpha, side, rotA, V, A, B,
+          prims: [seg(V, A, 'ref', 'round'), seg(V, B, 'target', 'round'), dotAt(V, 'ink')],
+        };
+      }
+    },
+
+    // Points between the two lines you mark on your own picture (see "your image" below).
+    image() {
+      const t = { kind: 'image', group: 'length', prims: [] };
+      layoutImage(t);
+      return t;
+    },
+  };
+
+  function pointsOf(prims) {
+    const pts = [];
+    for (const p of prims) {
+      if (p.type === 'seg') pts.push(p.a, p.b);
+      else if (p.type === 'dot') pts.push(p.p);
+      else if (p.type === 'ellipse') pts.push(sub(p.c, [p.ex, p.ey]), add(p.c, [p.ex, p.ey]));
+    }
+    return pts;
+  }
+
+  function bboxOf(prims) {
+    const pts = pointsOf(prims), xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    return { c: [(x0 + x1) / 2, (y0 + y1) / 2], w: x1 - x0, h: y1 - y0 };
+  }
+
+  // The shape is moved so its bounding box is centred in the panel: it is always found in the same
+  // place. (It was generated within ±M, so it still is.)
+  function centred(t) {
+    const c = bboxOf(t.prims).c, mv = p => sub(p, c), mvSeg = s => s && { a: mv(s.a), b: mv(s.b) };
+    for (const p of t.prims) {
+      if (p.type === 'seg') { p.a = mv(p.a); p.b = mv(p.b); }
+      else if (p.type === 'dot') p.p = mv(p.p);
+      else if (p.type === 'ellipse') p.c = mv(p.c);
+    }
+    t.R = mvSeg(t.R); t.T = mvSeg(t.T); t.line = mvSeg(t.line);
+    if (t.corners) t.corners = t.corners.map(mv);
+    if (t.ell) t.ell = { ...t.ell, c: mv(t.ell.c) };
+    if (t.V) { t.V = mv(t.V); t.A = mv(t.A); t.B = mv(t.B); }
+    if (t.group === 'length' && t.kind !== 'rects') t.n = towardCentre(t.T);
+    return t;
+  }
+
+  // The copy is never drawn near the original's size, or it could be matched by absolute length:
+  // sight-size, the habit this trains away from.
+  function chooseScale(lo, hi) {
+    if (lo > hi) return hi;
+    const bands = [];
+    if (Math.min(hi, 1 / 1.3) > lo) bands.push([lo, Math.min(hi, 1 / 1.3)]);
+    if (hi > Math.max(lo, 1.3)) bands.push([Math.max(lo, 1.3), hi]);
+    if (!bands.length) return Math.abs(Math.log(lo)) > Math.abs(Math.log(hi)) ? lo : hi;
+    const b = pick(bands);
+    return logRand(b[0], b[1]);
+  }
+
+  // What the copy panel shows before you draw. Lengths: the reference only, rescaled, in the same
+  // orientation, as a reference photo and a canvas differ in scale. Corners: one arm, turned, so the
+  // angle itself has to be judged rather than each arm's direction. Tilt: nothing but the frame.
+  // The given part is never placed at random: the copy is the original scaled about the centre,
+  // so the reference sits where it sits in the original (both are centred), and the target, drawn
+  // where it belongs, fits the panel. A corner's vertex is at the centre. The true target is kept
+  // in copy units too (T, corners, ell), for scoring and the reveal.
+  function buildCopy(t) {
+    if (t.kind === 'tilt') return { prims: [] };
+    if (t.kind === 'corner') {
+      // Either arm reaches 0.3 from the vertex, so the circle of that radius is kept clear.
+      const { off } = clearOfTools({ x0: -0.3, y0: -0.3, x1: 0.3, y1: 0.3 });
+      const rot = t.rotA + pick([1, -1]) * rand(35, 180) / DEG, V = off, A = add(V, mul(dirOf(rot), 0.3));
+      return { V, A, rot, prims: [seg(V, A, 'ref', 'round'), dotAt(V, 'ink')] };
+    }
+    const Rl = dist(t.R.a, t.R.b), Tl = dist(t.T.a, t.T.b), bb = bboxOf(t.prims);
+    let s = chooseScale(Math.max(0.075 / Math.min(Rl, Tl), 0.35), Math.min(0.85 / Math.max(bb.w, bb.h), 2.5));
+    const m = 16 / Math.min(copyCanvas.clientWidth, copyCanvas.clientHeight); // a rectangle's stubs, and a dot's size
+    const fit = clearOfTools({ x0: -bb.w * s / 2 - m, y0: -bb.h * s / 2 - m, x1: bb.w * s / 2 + m, y1: bb.h * s / 2 + m });
+    s *= fit.scale;
+    const map = p => add(mul(sub(p, bb.c), s), fit.off);
+    const R = { a: map(t.R.a), b: map(t.R.b) }, T = { a: map(t.T.a), b: map(t.T.b) };
+    if (isPair(t.kind)) return { s, R, T, prims: [dotAt(R.a, 'ref'), dotAt(R.b, 'ref')] };
+    if (t.kind === 'rects') {
+      // Stubs of the target sides at both ends of the given side show which way the rectangle
+      // goes, and so which of the two reference sides this is.
+      const corners = t.corners.map(map), inward = norm(sub(corners[3], corners[0]));
+      return { s, R, T, corners, prims: [seg(R.a, R.b, 'ref', 'square'), stub(R.a, inward), stub(R.b, inward)] };
+    }
+    if (t.kind === 'ellipses') {
+      const e = t.ell, ell = { c: map(e.c), rx: e.rx * s, ry: e.ry * s, ang: e.ang };
+      return { s, R, T, ell, axis: perp(norm(sub(R.b, R.a))), prims: [seg(R.a, R.b, 'ref'), dotAt(ell.c, 'ref', 3)] };
+    }
+    return { s, R, T, prims: [seg(R.a, R.b, 'ref')] };
+  }
+
+  // Nothing of the copy, given or to be drawn, may sit under its toolbar. `box` is the copy's
+  // extent, centred, in copy units. If it would reach under the toolbar it moves right or down,
+  // whichever is the smaller move that keeps it in the panel; failing both, it shrinks into the
+  // space right of the toolbar. Returns the offset and the scale factor to apply.
+  function clearOfTools(box) {
+    const c = copyCanvas.getBoundingClientRect(), tb = drawToolsEl.getBoundingClientRect(), u = Math.min(c.width, c.height) || 1;
+    const W = c.width / 2 / u, H = c.height / 2 / u, gap = 8 / u, edge = 12 / u;
+    const k = { x1: (tb.right - c.left) / u - W + gap, y1: (tb.bottom - c.top) / u - H + gap };
+    if (!tb.width || box.x0 >= k.x1 || box.y0 >= k.y1) return { off: [0, 0], scale: 1 };
+    const right = k.x1 - box.x0, down = k.y1 - box.y0;
+    const fitsRight = box.x1 + right <= W - edge, fitsDown = box.y1 + down <= H - edge;
+    if (fitsRight && (!fitsDown || right <= down)) return { off: [right, 0], scale: 1 };
+    if (fitsDown) return { off: [0, down], scale: 1 };
+    const availW = W - edge - k.x1, availH = 2 * (H - edge);
+    const scale = Math.min(1, availW / (box.x1 - box.x0), availH / (box.y1 - box.y0));
+    return { off: [k.x1 + availW / 2 - (box.x0 + box.x1) / 2 * scale, 0], scale };
+  }
+
+  /* ---------- state ---------- */
+  let trial = null;     // null when no exercise is on
+  // Your scored lines {a, b} in copy units, as drawn; a rectangle side running the reference's way
+  // has graded false. An ellipse's one mark runs from its centre to the width you set.
+  let marks = [];
+  let drafts = [];      // your draft strokes, raw point lists: drawn, never scored
+  let tool = 'draw';    // 'draw' (scored lines), 'draft' or 'erase'
+  let yours = null;     // the answer as checked
+  let revealed = false;
+
+  function resetMarks() {
+    marks = [];
+    active = null;
+  }
+
+  // Your image comes up among the others only once it has a picture and both lines; when it is the
+  // only exercise on, it comes up to be set up.
+  function next() {
+    let on = KINDS.filter(k => S.kinds[k] && (k !== 'image' || ready()));
+    if (!on.length && S.kinds.image) on = ['image'];
+    if (!on.length) { start(null); return; }
+    let k = pick(on);
+    if (trial && k === trial.kind && on.length > 1) k = pick(on);
+    start(k);
+  }
+
+  function start(kind) {
+    trial = kind ? GEN[kind]() : null;
+    if (trial && kind !== 'image') centred(trial);
+    if (trial && (kind !== 'image' || ready())) {
+      drawToolsEl.hidden = false; // measured by clearOfTools
+      trial.copy = buildCopy(trial);
+    }
+    resetMarks();
+    drafts = []; tool = 'draw'; yours = null; revealed = false;
+    refTool = kind === 'image' && custom.img && !ready() ? (custom.R ? 'target' : 'given') : null;
+    refActive = null;
+    syncUI();
+    draw();
+  }
+
+  function tiltOf(s) {
+    const v = sub(s.b, s.a);
+    let d = Math.atan2(-v[1], v[0]) * DEG;
+    if (d > 90) d -= 180; else if (d <= -90) d += 180;
+    return d;
+  }
+
+  // Lengths: your ratio to the reference; with two sides drawn (rectangles), their average. An
+  // ellipse's mark is its half-width. Tilt: degrees from level, signed. Corners: degrees.
+  function yoursOf() {
+    const t = trial;
+    if (!t || !t.copy) return null;
+    const c = t.copy, ms = marks.filter(m => m.graded !== false && dist(m.a, m.b) > 0.004);
+    if (!ms.length) return null;
+    if (t.group === 'length') {
+      const L = ms.reduce((s, m) => s + dist(m.a, m.b), 0) / ms.length * (t.kind === 'ellipses' ? 2 : 1);
+      return L / dist(c.R.a, c.R.b);
+    }
+    if (t.kind === 'tilt') return tiltOf(ms[0]);
+    return Math.abs(wrapPi(angOf(sub(ms[0].b, c.V)) - c.rot)) * DEG;
+  }
+
+  const fmtR = v => v >= 9.995 ? v.toFixed(1) : v.toFixed(2);
+  const fmtD = v => `${Math.round(v)}°`.replace('-', '−');
+
+  // Dot pairs: how far your line is turned from the true pair's and how far its middle is from
+  // theirs, in reference units. Either end of your line may stand for either dot.
+  function placement() {
+    const c = trial.copy, m = marks[0];
+    return {
+      turn: Math.abs(wrapPi(2 * (angOf(sub(m.b, m.a)) - angOf(sub(c.T.b, c.T.a))))) / 2 * DEG,
+      shift: dist(mid(m), mid(c.T)) / dist(c.R.a, c.R.b),
+    };
+  }
+
+  function verdict() {
+    const t = trial, y = yours;
+    if (t.group === 'length') {
+      // The difference in reference units, the units of the numbers shown. A percentage of the
+      // target was tried and read harshly on short targets, where a few pixels are a large share.
+      const e = Math.round(y * 100) - Math.round(t.ratio * 100), words = t.kind === 'ellipses' ? ['wide', 'narrow'] : ['long', 'short'];
+      const notes = [e === 0 ? 'spot on' : `${fmtR(Math.abs(e) / 100)} too ${e > 0 ? words[0] : words[1]}`];
+      if (isPair(t.kind)) {
+        const p = placement();
+        notes.push(`${Math.round(p.turn)}° off`, `shifted ${fmtR(p.shift)}`);
+      }
+      return { yours: fmtR(y), truth: fmtR(t.ratio), notes };
+    }
+    let mine, truth, words;
+    if (t.kind === 'corner') { mine = y; truth = t.alpha; words = ['wide', 'narrow']; }
+    else {
+      // A drawn line is read on the true line's side, so one that passes through plumb or level
+      // reads as past 90° or below 0° rather than as a different tilt.
+      truth = Math.abs(t.deg);
+      let d = y - t.deg;
+      d -= 180 * Math.round(d / 180);
+      mine = Math.sign(t.deg) * (t.deg + d);
+      words = ['steep', 'flat'];
+    }
+    const e = Math.round(mine) - Math.round(truth);
+    return { yours: fmtD(mine), truth: fmtD(truth), notes: [e === 0 ? 'spot on' : `${Math.abs(e)}° too ${e > 0 ? words[0] : words[1]}`] };
+  }
+
+  function primary() {
+    if (!trial) return;
+    if (revealed) { next(); return; }
+    const y = yoursOf();
+    if (y == null) return;
+    yours = y;
+    revealed = true;
+    active = null;
+    syncUI();
+    draw();
+  }
+
+  /* ---------- text ---------- */
+  const sw = (role, shape = '') => `<i class="sw ${role} ${shape}" role="img" aria-label="${role === 'ref' ? 'reference' : 'target'}"></i>`;
+  const SEP = '<span class="sep">·</span>';
+  const PROMPTS = {
+    lines: `Draw ${sw('target')} to scale with ${sw('ref')}`,
+    rects: `Draw the ${sw('target')} sides to scale with the ${sw('ref')} side`,
+    ellipses: `Drag out the ellipse's width to scale with its long axis ${sw('ref')}`,
+    points: `Draw the ${sw('target', 'pts')} pair where it sits against ${sw('ref', 'pts')}`,
+    tilt: 'Draw a line at the same tilt',
+    corner: 'The copy is turned. Draw the missing arm at the same angle',
+  };
+  function promptFor(t) {
+    if (t.kind !== 'image') return PROMPTS[t.kind];
+    if (!custom.img) return 'Drop, paste or open an image to make your own exercise';
+    if (refTool === 'given' || !custom.R) return `Drag a reference line ${sw('ref', 'pts')} across your image`;
+    if (refTool === 'target' || !custom.T) return `Now drag the target line ${sw('target', 'pts')}`;
+    return PROMPTS.points;
+  }
+
+  // The legend under each panel once scored: what each colour and mark means there.
+  const lgRow = (shape, colour, label) => `<div class="lg-row"><i class="lg ${shape}" style="--c: var(--${colour})"></i>${label}</div>`;
+  function legends(t) {
+    const pair = isPair(t.kind), mark = pair ? 'dots' : 'line', stim = [], copy = [lgRow(mark, 'ink', 'Yours')];
+    if (t.group === 'length') {
+      stim.push(lgRow(mark, 'ref', 'Reference'), lgRow(mark, 'target', t.kind === 'ellipses' ? 'Width' : 'Target'), lgRow('ruler', 'ref', 'Reference, end to end'));
+      if (pair) copy.push(lgRow('dots', 'target', 'True pair'));
+      if (t.kind === 'rects') copy.push(lgRow('line', 'target', 'True rectangle'));
+      if (t.kind === 'ellipses') copy.push(lgRow('line', 'target', 'True ellipse'));
+      if (t.kind === 'lines' || t.kind === 'rects') copy.push(lgRow('bar', 'measure', 'True length'));
+      copy.push(lgRow(mark, 'ref', 'Reference'));
+    } else if (t.kind === 'tilt') {
+      stim.push(lgRow('line', 'target', 'Line'), lgRow('dash', 'ref', 'Level'));
+      copy.push(lgRow('line', 'target', 'True tilt'), lgRow('dash', 'ref', 'Level'));
+    } else {
+      stim.push(lgRow('line', 'ref', 'Given arm'), lgRow('line', 'target', 'Arm to draw'));
+      copy.push(lgRow('line', 'target', 'True arm'), lgRow('line', 'ref', 'Given arm'));
+    }
+    if (drafts.length) copy.push(lgRow('faint', 'ink', 'Draft'));
+    return { stim, copy };
+  }
+
+  const app = $('app'), promptEl = $('prompt'), scoreEl = $('score'), actionsEl = $('actions');
+  const goBtn = $('goBtn'), skipBtn = $('skipBtn'), emptyCard = $('emptyCard');
+  const stimPanel = $('stim'), copyPanel = $('copy'), refToolsEl = $('refTools'), drawToolsEl = $('drawTools');
+  const dropzone = $('dropzone'), stimLegend = $('stimLegend'), copyLegend = $('copyLegend');
+  const settingsEl = $('settings'), cogBtn = $('cogBtn'), freehandToggle = $('freehandToggle');
+
+  function syncUI() {
+    const t = trial, drawable = !!(t && t.copy && !revealed), img = !!(t && t.kind === 'image');
+    emptyCard.hidden = !!t;
+    promptEl.innerHTML = t ? promptFor(t) : 'No exercise is on';
+    if (revealed) {
+      const v = verdict();
+      scoreEl.innerHTML = `<div class="headline">${v.notes.join(SEP)}</div><div class="detail">Yours <b>${v.yours}</b>${SEP}True <b>${v.truth}</b></div>`;
+    } else scoreEl.innerHTML = '';
+    actionsEl.hidden = !t;
+    goBtn.textContent = revealed ? 'Next' : 'Check';
+    goBtn.disabled = !revealed && yoursOf() == null;
+    skipBtn.hidden = revealed;
+
+    drawToolsEl.hidden = !(t && t.copy);
+    for (const b of drawToolsEl.querySelectorAll('[data-tool]')) {
+      b.setAttribute('aria-pressed', String(b.dataset.tool === tool));
+      b.disabled = !drawable;
+    }
+    copyPanel.classList.toggle('erasing', tool === 'erase' && drawable);
+
+    refToolsEl.hidden = !img;
+    for (const b of refToolsEl.querySelectorAll('[data-ref-tool]')) {
+      b.setAttribute('aria-pressed', String(b.dataset.refTool === refTool));
+      b.disabled = !custom.img || revealed;
+    }
+    stimPanel.classList.toggle('marking', img && !!refTool && !!custom.img && !revealed);
+    dropzone.hidden = !(img && !custom.img);
+
+    const lg = revealed ? legends(t) : null;
+    stimLegend.hidden = copyLegend.hidden = !lg;
+    if (lg) { stimLegend.innerHTML = lg.stim.join(''); copyLegend.innerHTML = lg.copy.join(''); }
+
+    freehandToggle.checked = S.freehand;
+    for (const i of settingsEl.querySelectorAll('[data-kind]')) i.checked = S.kinds[i.dataset.kind];
+  }
+
+  /* ---------- drawing ---------- */
+  const stimCanvas = $('stimCanvas'), copyCanvas = $('copyCanvas');
+  const C = {};
+  function readColours() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ['paper', 'ink', 'ref', 'target', 'measure']) C[k] = cs.getPropertyValue('--' + k).trim();
+  }
+
+  let queued = false;
+  function draw() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; paintStim(); paintCopy(); });
+  }
+
+  function prep(canvas) {
+    const w = canvas.clientWidth, h = canvas.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const W = Math.round(w * dpr), H = Math.round(h * dpr);
+    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx, V: { u: Math.min(w, h), cx: w / 2, cy: h / 2 } };
+  }
+  const P = (V, p) => [V.cx + p[0] * V.u, V.cy + p[1] * V.u];
+
+  function path(ctx, V, pts, color, width, { cap = 'butt', dash = null, close = false, alpha = 1 } = {}) {
+    ctx.save();
+    ctx.beginPath();
+    pts.forEach((p, i) => { const [x, y] = P(V, p); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+    if (close) ctx.closePath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = cap;
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = alpha;
+    if (dash) ctx.setLineDash(dash);
+    ctx.stroke();
+    ctx.restore();
+  }
+  const line = (ctx, V, a, b, color, width, opts) => path(ctx, V, [a, b], color, width, opts);
+
+  function ellipseAt(ctx, V, c, rx, ry, ang, color, width, dash = null) {
+    const [x, y] = P(V, c);
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx * V.u, Math.max(ry * V.u, 0.01), ang, 0, 2 * Math.PI);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    if (dash) ctx.setLineDash(dash);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function disc(ctx, V, p, rPx, color) {
+    const [x, y] = P(V, p);
+    ctx.beginPath();
+    ctx.arc(x, y, rPx, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function arcAt(ctx, V, c, a0, a1, rPx, color) {
+    const [x, y] = P(V, c), d = wrapPi(a1 - a0);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, rPx, a0, a0 + d, d < 0);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Shapes are drawn with butt caps so a line's visible length is its true length. Dots on your
+  // image get a dark and a light ring, to read on any picture.
+  function drawPrim(ctx, V, p) {
+    const color = C[p.role];
+    if (p.type === 'seg') line(ctx, V, p.a, p.b, color, 3, { cap: p.cap });
+    else if (p.type === 'dot') {
+      if (p.halo) { disc(ctx, V, p.p, p.r + 3, 'rgba(0, 0, 0, 0.6)'); disc(ctx, V, p.p, p.r + 1.5, '#fff'); }
+      disc(ctx, V, p.p, p.r, color);
+    } else if (p.type === 'stub') line(ctx, V, p.p, add(p.p, mul(p.d, 16 / V.u)), color, 3);
+    else if (p.type === 'ellipse') ellipseAt(ctx, V, p.c, p.rx, p.ry, p.ang, color, 2.5);
+  }
+
+  function tick(ctx, V, p, n, halfPx, color, width) {
+    const h = mul(n, halfPx / V.u);
+    line(ctx, V, sub(p, h), add(p, h), color, width);
+  }
+
+  // The reference laid end to end along a line from `start`, offset sideways: how many
+  // references fit, the way a head is stepped down a figure.
+  const rulerUnits = (unitLen, cover) => Math.max(1, Math.ceil(Math.min(cover, 1.6) / unitLen - 1e-6));
+  function ruler(ctx, V, start, d, n, offPx, unitLen, cover) {
+    const k = rulerUnits(unitLen, cover), o = add(start, mul(n, offPx / V.u));
+    line(ctx, V, o, add(o, mul(d, k * unitLen)), C.ref, 1.5);
+    for (let i = 0; i <= k; i++) tick(ctx, V, add(o, mul(d, i * unitLen)), n, 5, C.ref, 1.5);
+  }
+
+  function bar(ctx, V, start, d, n, offPx, L, color) {
+    const o = add(start, mul(n, offPx / V.u)), e = add(o, mul(d, Math.min(L, 1.6)));
+    line(ctx, V, o, e, color, 2.5);
+    tick(ctx, V, o, n, 5, color, 2);
+    tick(ctx, V, e, n, 5, color, 2);
+  }
+
+  // What the reveal adds over the original: a drawing, and the points it reaches.
+  function stimReveal(t) {
+    if (t.group === 'length') {
+      const Rl = dist(t.R.a, t.R.b), Tl = dist(t.T.a, t.T.b);
+      // Measured from whichever end of the target makes the ruler run toward the centre, so a
+      // reference longer than the target is more likely to stay in view.
+      let start = t.T.a, d = norm(sub(t.T.b, t.T.a));
+      if (dot(d, mid(t.T)) > 0) { start = t.T.b; d = mul(d, -1); }
+      return {
+        reach: [start, add(start, mul(d, rulerUnits(Rl, Tl) * Rl))],
+        draw(ctx, V) {
+          const w = t.kind === 'image' ? 2 : 1.5;
+          if (isPair(t.kind)) line(ctx, V, t.R.a, t.R.b, C.ref, w);
+          if (isPair(t.kind) || t.kind === 'ellipses') line(ctx, V, t.T.a, t.T.b, C.target, w);
+          ruler(ctx, V, start, d, t.n, 12, Rl, Tl);
+        },
+      };
+    }
+    if (t.kind === 'tilt') {
+      const m = mid(t.line), level = [dist(t.line.a, t.line.b) / 2 + 0.03, 0];
+      return {
+        reach: [sub(m, level), add(m, level)],
+        draw(ctx, V) {
+          line(ctx, V, sub(m, level), add(m, level), C.ref, 1.5, { dash: [5, 5] });
+          arcAt(ctx, V, m, 0, -t.deg / DEG, 40, C.ref);
+        },
+      };
+    }
+    return { reach: [], draw(ctx, V) { arcAt(ctx, V, t.V, t.rotA, t.rotA + t.side * t.alpha / DEG, 30, C.ref); } };
+  }
+
+  // On reveal the ruler can reach past the panel's edge. The view then moves just enough to keep
+  // everything in, and shrinks only if moving is not enough.
+  function fitView(V, pts) {
+    const m = 18 / V.u, W = V.cx / V.u - m, H = V.cy / V.u - m;
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const k = Math.min(1, 2 * W / (x1 - x0 || 1), 2 * H / (y1 - y0 || 1));
+    const shift = (lo, hi, half) => lo * k < -half ? -half - lo * k : hi * k > half ? half - hi * k : 0;
+    return { u: V.u * k, cx: V.cx + shift(x0, x1, W) * V.u, cy: V.cy + shift(y0, y1, H) * V.u };
+  }
+
+  function paintStim() {
+    const { ctx, V: base } = prep(stimCanvas), t = trial;
+    if (!t) return;
+    if (t.kind === 'image') layoutImage(t); // follows the panel's size
+    const rv = revealed ? stimReveal(t) : null;
+    const V = rv ? fitView(base, [...pointsOf(t.prims), ...rv.reach]) : base;
+    if (t.kind === 'image' && custom.img) {
+      const [x0, y0] = P(V, t.frame.a), [x1, y1] = P(V, t.frame.b);
+      ctx.drawImage(custom.img, x0, y0, x1 - x0, y1 - y0);
+    }
+    // A line being marked anew hides the one it replaces.
+    for (const p of t.prims) if (!(refActive && p.line === refActive.which)) drawPrim(ctx, V, p);
+    if (rv) rv.draw(ctx, V);
+    if (refActive) {
+      const a = t.toUnits(refActive.a), b = t.toUnits(refActive.b), role = refActive.which === 'given' ? 'ref' : 'target';
+      line(ctx, V, a, b, C[role], 2, { dash: [6, 5] });
+      drawPrim(ctx, V, { type: 'dot', p: a, role, r: 6, halo: true });
+      drawPrim(ctx, V, { type: 'dot', p: b, role, r: 6, halo: true });
+    }
+  }
+
+  function revealCopy(ctx, V, t) {
+    const c = t.copy, scored = marks.filter(m => m.graded !== false && dist(m.a, m.b) > 0.004);
+    if (t.group === 'length') {
+      if (t.kind === 'ellipses') {
+        ellipseAt(ctx, V, c.ell.c, c.ell.rx, c.ell.ry, c.ell.ang, C.target, 1.5);
+        return;
+      }
+      if (isPair(t.kind)) {
+        // Where the pair should be: placement is judged as well as length.
+        line(ctx, V, c.T.a, c.T.b, C.target, 1, { dash: [3, 4] });
+        disc(ctx, V, c.T.a, 5, C.target);
+        disc(ctx, V, c.T.b, 5, C.target);
+        return;
+      }
+      if (t.kind === 'rects') path(ctx, V, c.corners, C.target, 1.5, { close: true });
+      // The true length beside each scored line, from the same start, in its own colour so it is
+      // not read as part of the true shape.
+      const tL = t.ratio * dist(c.R.a, c.R.b);
+      for (const m of scored) bar(ctx, V, m.a, norm(sub(m.b, m.a)), towardCentre(m), 12, tL, C.measure);
+      return;
+    }
+    const m = scored[0], uL = dist(m.a, m.b);
+    if (t.kind === 'tilt') {
+      const o = mid(m), h = mul([Math.cos(t.deg / DEG), -Math.sin(t.deg / DEG)], uL / 2);
+      line(ctx, V, sub(o, [uL / 2 + 0.03, 0]), add(o, [uL / 2 + 0.03, 0]), C.ref, 1.5, { dash: [5, 5] });
+      line(ctx, V, sub(o, h), add(o, h), C.target, 2.5, { cap: 'round' });
+    } else {
+      // Shown on whichever side of the given arm you drew; only the angle's size is scored.
+      const side = Math.sign(wrapPi(angOf(sub(m.b, c.V)) - c.rot)) || 1;
+      line(ctx, V, c.V, add(c.V, mul(dirOf(c.rot + side * t.alpha / DEG), uL)), C.target, 2.5, { cap: 'round' });
+    }
+  }
+
+  function drawMark(ctx, V, t, m) {
+    if (isPair(t.kind)) {
+      line(ctx, V, m.a, m.b, C.ink, 1, { dash: [3, 4] });
+      disc(ctx, V, m.a, 5, C.ink);
+      disc(ctx, V, m.b, 5, C.ink);
+    } else line(ctx, V, m.a, m.b, C.ink, m.graded === false ? 1.5 : 2.5, { cap: t.group === 'angle' ? 'round' : 'butt' });
+  }
+
+  function paintCopy() {
+    const { ctx, V } = prep(copyCanvas), t = trial;
+    if (!t || !t.copy) return;
+    const c = t.copy;
+    for (const p of c.prims) drawPrim(ctx, V, p);
+    if (revealed && yours != null) revealCopy(ctx, V, t);
+    for (const d of drafts) path(ctx, V, d, C.ink, 1.5, { cap: 'round', alpha: 0.45 });
+
+    if (t.kind === 'ellipses') {
+      const m = marks[0];
+      if (m) {
+        ellipseAt(ctx, V, m.a, dist(c.R.a, c.R.b) / 2, dist(m.a, m.b), angOf(sub(c.R.b, c.R.a)), C.ink, 2.5);
+        if (!revealed) {
+          const [x, y] = P(V, m.b);
+          ctx.beginPath();
+          ctx.arc(x, y, 8, 0, 2 * Math.PI);
+          ctx.strokeStyle = C.ink;
+          ctx.lineWidth = 1.25;
+          ctx.stroke();
+        }
+      }
+    } else {
+      // A scored line being drawn hides the one it will replace (all but rectangle sides).
+      const replacing = active && active.pts && t.kind !== 'rects';
+      for (const m of replacing ? [] : marks) drawMark(ctx, V, t, m);
+      if (active && active.pts) {
+        if (active.freehand) path(ctx, V, active.pts, C.ink, 2.5, { cap: 'round' });
+        else for (const f of pieces(active.pts, false)) drawMark(ctx, V, t, settle(f));
+      }
+    }
+    if (active && active.draft) path(ctx, V, active.draft, C.ink, 1.5, { cap: 'round', alpha: 0.45 });
+    if (active && active.erase) path(ctx, V, active.erase, C.ink, 14, { cap: 'round', alpha: 0.1 });
+  }
+
+  /* ---------- drawing input ---------- */
+  // Draw: a line starts where you press and ends where you let go, drawn straight between, so the
+  // judgement is its length, not how straight it is drawn. Freehand (a setting): the stroke is
+  // replaced on release by its best-fit straight line, so wobble is not scored. Either way, drawing
+  // again replaces the line, except on rectangles, where any sides may be drawn, one at a time or
+  // several in one motion (split where the path turns); up to two running each way are kept, a
+  // third replacing the nearer. Ellipses instead take a press or drag anywhere as the width,
+  // measured across the long axis from the centre.
+  // Draft: raw freehand strokes, kept as drawn and never scored. Erase: whatever the eraser's path
+  // passes within 8px of goes, scored lines and drafts alike.
+  let active = null;    // the gesture in progress: {id, pts, freehand}, {id, ellipse}, {id, draft}, {id, erase}
+  let penSeen = false;  // once a pen has been used, touches cannot draw (a resting palm)
+  let box = null;
+
+  const unitPx = () => Math.min(box.width, box.height);
+  function toUnit(e) {
+    const u = unitPx();
+    return [(e.clientX - box.left - box.width / 2) / u, (e.clientY - box.top - box.height / 2) / u];
+  }
+  const coalesced = e => e.getCoalescedEvents && e.getCoalescedEvents().length ? e.getCoalescedEvents() : [e];
+
+  // Rectangles: a side is scored if it runs nearer the target's way than the reference's.
+  const runsTargetWay = m => Math.abs(dot(norm(sub(m.b, m.a)), norm(sub(trial.copy.R.b, trial.copy.R.a)))) < Math.SQRT1_2;
+
+  // What a drawn line becomes: a corner's arm is moved to start at the vertex, keeping its
+  // direction and length; a rectangle side is marked as scored or not.
+  function settle(f) {
+    if (trial.kind === 'corner') {
+      const V = trial.copy.V, [near, far] = dist(f.a, V) <= dist(f.b, V) ? [f.a, f.b] : [f.b, f.a];
+      return { a: V, b: add(far, sub(V, near)) };
+    }
+    if (trial.kind === 'rects') return { ...f, graded: runsTargetWay(f) };
+    return f;
+  }
+
+  // Where a drawn path turns: Ramer–Douglas–Peucker keeps the points that stand off the line between
+  // their neighbours by more than a tolerance that hand wobble stays under, then corners turning
+  // less than 35°, or leaving a piece under 15px, are dropped. Returns indices into pts.
+  function cornersOf(pts) {
+    const n = pts.length, u = unitPx();
+    if (n < 3) return [0, n - 1];
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const size = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * u;
+    const eps = Math.min(18, Math.max(8, 0.05 * size)) / u;
+    const keep = [0, n - 1], todo = [[0, n - 1]];
+    while (todo.length) {
+      const [i, j] = todo.pop();
+      let far = -1, fd = eps;
+      for (let k = i + 1; k < j; k++) { const d = ptSeg(pts[k], pts[i], pts[j]); if (d > fd) { fd = d; far = k; } }
+      if (far >= 0) { keep.push(far); todo.push([i, far], [far, j]); }
+    }
+    keep.sort((a, b) => a - b);
+    for (let m = 1; m < keep.length - 1;) {
+      const p0 = pts[keep[m - 1]], p1 = pts[keep[m]], p2 = pts[keep[m + 1]];
+      const turn = Math.abs(wrapPi(angOf(sub(p2, p1)) - angOf(sub(p1, p0))));
+      if (turn < 35 / DEG || Math.min(dist(p0, p1), dist(p1, p2)) * u < 15) { keep.splice(m, 1); m = Math.max(1, m - 1); }
+      else m++;
+    }
+    return keep;
+  }
+
+  // The straight lines a gesture makes: one, from its first point to its last (or fitted, freehand),
+  // except on rectangles, where the path is split at its corners. Pieces under 12px are taps.
+  function pieces(pts, freehand) {
+    const ks = trial.kind === 'rects' ? cornersOf(pts) : [0, pts.length - 1], out = [];
+    for (let m = 1; m < ks.length; m++) {
+      out.push(freehand ? fitSegment(pts.slice(ks[m - 1], ks[m] + 1)) : { a: pts[ks[m - 1]], b: pts[ks[m]] });
+    }
+    return out.filter(f => f && dist(f.a, f.b) * unitPx() >= 12);
+  }
+
+  function commit(fs) {
+    if (!fs.length) return;
+    const ms = fs.map(settle);
+    if (trial.kind !== 'rects') { marks = [ms[0]]; return; }
+    // Each side is added. Once two run the same way, a new one replaces the nearest of those drawn
+    // before this gesture, never another side of the same gesture.
+    const before = new Set(marks);
+    for (const m of ms) {
+      const same = marks.filter(o => o.graded === m.graded), old = same.filter(o => before.has(o));
+      if (same.length >= 2 && old.length) marks.splice(marks.indexOf(old.reduce((b, o) => dist(mid(o), mid(m)) < dist(mid(b), mid(m)) ? o : b)), 1);
+      marks.push(m);
+    }
+  }
+
+  function setWidth(p) {
+    const c = trial.copy;
+    marks = [{ a: c.ell.c, b: add(c.ell.c, mul(c.axis, dot(sub(p, c.ell.c), c.axis))) }];
+  }
+
+  // Principal axis of the stroke points; the line spans their extreme projections onto it and
+  // runs the way the stroke was drawn.
+  function fitSegment(pts) {
+    if (pts.length < 2) return null;
+    const m = mul(pts.reduce(add, [0, 0]), 1 / pts.length);
+    let sxx = 0, sxy = 0, syy = 0;
+    for (const p of pts) { const q = sub(p, m); sxx += q[0] * q[0]; sxy += q[0] * q[1]; syy += q[1] * q[1]; }
+    let d = dirOf(0.5 * Math.atan2(2 * sxy, sxx - syy));
+    if (dot(sub(pts[pts.length - 1], pts[0]), d) < 0) d = mul(d, -1);
+    let lo = Infinity, hi = -Infinity;
+    for (const p of pts) { const s = dot(sub(p, m), d); lo = Math.min(lo, s); hi = Math.max(hi, s); }
+    return { a: add(m, mul(d, lo)), b: add(m, mul(d, hi)) };
+  }
+
+  // The path a mark is drawn as, for the eraser: a line, or the ellipse you set, as a polygon.
+  function markPath(m) {
+    if (trial.kind !== 'ellipses') return [m.a, m.b];
+    const c = trial.copy, u = norm(sub(c.R.b, c.R.a)), v = perp(u), rx = dist(c.R.a, c.R.b) / 2, ry = dist(m.a, m.b);
+    return Array.from({ length: 49 }, (_, i) => {
+      const th = i / 48 * 2 * Math.PI;
+      return add(m.a, add(mul(u, rx * Math.cos(th)), mul(v, ry * Math.sin(th))));
+    });
+  }
+
+  function eraseAlong(a, b) {
+    const tol = 8 / unitPx();
+    const hit = pts => pts.length === 1 ? segDist(pts[0], pts[0], a, b) < tol : pts.some((p, i) => i > 0 && segDist(pts[i - 1], p, a, b) < tol);
+    const n = marks.length + drafts.length;
+    marks = marks.filter(m => !hit(markPath(m)));
+    drafts = drafts.filter(d => !hit(d));
+    return marks.length + drafts.length !== n;
+  }
+
+  copyCanvas.addEventListener('pointerdown', e => {
+    if (!trial || !trial.copy || revealed || active) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.pointerType === 'pen') penSeen = true;
+    if (penSeen && e.pointerType === 'touch') return;
+    box = copyCanvas.getBoundingClientRect();
+    const p = toUnit(e), id = e.pointerId;
+    if (tool === 'erase') { active = { id, erase: [p] }; eraseAlong(p, p); }
+    else if (tool === 'draft') active = { id, draft: [p] };
+    else if (trial.kind === 'ellipses') { active = { id, ellipse: true }; setWidth(p); }
+    else active = { id, pts: [p], freehand: S.freehand };
+    copyCanvas.setPointerCapture(id);
+    e.preventDefault();
+    syncUI();
+    draw();
+  });
+  copyCanvas.addEventListener('pointermove', e => {
+    if (!active || e.pointerId !== active.id) return;
+    for (const ev of coalesced(e)) {
+      const p = toUnit(ev);
+      if (active.erase) { eraseAlong(active.erase[active.erase.length - 1], p); active.erase.push(p); }
+      else if (active.draft) active.draft.push(p);
+      else if (active.ellipse) setWidth(p);
+      else active.pts.push(p);
+    }
+    if (active.erase) syncUI();
+    draw();
+  });
+  function release(e) {
+    if (!active || e.pointerId !== active.id) return;
+    if (active.pts) commit(pieces(active.pts, active.freehand));
+    if (active.draft && active.draft.length > 1) drafts.push(active.draft);
+    active = null;
+    syncUI();
+    draw();
+  }
+  copyCanvas.addEventListener('pointerup', release);
+  copyCanvas.addEventListener('pointercancel', e => {
+    if (!active || e.pointerId !== active.id) return;
+    active = null; // a cancelled line is dropped; an ellipse keeps the width it reached
+    syncUI();
+    draw();
+  });
+
+  /* ---------- your image ---------- */
+  // An exercise made from a picture of your own: the two lines you mark on it make a Points
+  // exercise, the reference pair given in your copy and the target pair drawn and judged. The
+  // picture is shown whole in the panel; its lines are kept in image pixels and laid out into panel
+  // units at each paint, so the dots stay on the picture through a resize. It is kept for the
+  // session only.
+  const custom = { img: null, url: null, R: null, T: null }; // R, T: your lines, in image pixels
+  let refTool = null;   // 'given' or 'target' while marking a line on the picture
+  let refActive = null; // the line being dragged: {id, which, a, b} in image pixels
+  const ready = () => !!(custom.img && custom.R && custom.T);
+  const STRIP = 66; // the reference panel's toolbar: 10px inset, 46px wide, and a gap
+
+  function layoutImage(t) {
+    const img = custom.img;
+    t.prims = []; t.R = t.T = null;
+    if (!img) return;
+    // Shown whole in the part of the panel right of its toolbar (STRIP px wide), with a 12px margin.
+    const w = stimCanvas.clientWidth, h = stimCanvas.clientHeight, u = Math.min(w, h) || 1;
+    const iw = img.naturalWidth, ih = img.naturalHeight, k = Math.max(0.01, Math.min((w - STRIP - 12) / iw, (h - 24) / ih));
+    const dx = STRIP / 2 / u; // the free part's centre, right of the panel's
+    t.toUnits = p => [(p[0] - iw / 2) * k / u + dx, (p[1] - ih / 2) * k / u];
+    t.toImage = p => [(p[0] - dx) * u / k + iw / 2, p[1] * u / k + ih / 2];
+    t.frame = { a: t.toUnits([0, 0]), b: t.toUnits([iw, ih]) };
+    for (const [key, which, role] of [['R', 'given', 'ref'], ['T', 'target', 'target']]) {
+      const s = custom[key];
+      if (!s) continue;
+      t[key] = { a: t.toUnits(s.a), b: t.toUnits(s.b) };
+      for (const p of [t[key].a, t[key].b]) t.prims.push({ type: 'dot', p, role, r: 6, halo: true, line: which });
+    }
+    if (t.R && t.T) { t.ratio = dist(custom.T.a, custom.T.b) / dist(custom.R.a, custom.R.b); t.n = towardCentre(t.T); }
+  }
+
+  let toastTimer = 0;
+  function toast(msg) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+
+  // A new picture turns Your image on and goes straight to marking its lines.
+  function loadImage(blob) {
+    const url = URL.createObjectURL(blob), img = new Image();
+    img.onload = () => {
+      if (custom.url) URL.revokeObjectURL(custom.url);
+      Object.assign(custom, { img, url, R: null, T: null });
+      S.kinds.image = true;
+      save();
+      openSettings(false);
+      start('image');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); toast('That file couldn’t be opened as an image'); };
+    img.src = url;
+  }
+
+  async function pasteImage() {
+    if (!navigator.clipboard || !navigator.clipboard.read) { toast('Paste with ⌘V or Ctrl+V'); return; }
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find(ty => ty.startsWith('image/'));
+        if (type) { loadImage(await item.getType(type)); return; }
+      }
+      toast('There’s no image on the clipboard');
+    } catch (err) {
+      toast('The clipboard couldn’t be read. Try ⌘V or Ctrl+V');
+    }
+  }
+
+  const fileInput = $('fileInput');
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files[0];
+    if (f) loadImage(f);
+    fileInput.value = '';
+  });
+  for (const b of document.querySelectorAll('[data-paste]')) b.addEventListener('click', pasteImage);
+  for (const b of document.querySelectorAll('[data-open]')) b.addEventListener('click', () => fileInput.click());
+  document.addEventListener('paste', e => {
+    const f = [...((e.clipboardData && e.clipboardData.files) || [])].find(x => x.type.startsWith('image/'));
+    if (f) { e.preventDefault(); loadImage(f); }
+  });
+
+  const hasFiles = e => !!e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+  stimPanel.addEventListener('dragover', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    stimPanel.classList.add('dropping');
+  });
+  stimPanel.addEventListener('dragleave', e => { if (!stimPanel.contains(e.relatedTarget)) stimPanel.classList.remove('dropping'); });
+  stimPanel.addEventListener('drop', e => {
+    e.preventDefault();
+    stimPanel.classList.remove('dropping');
+    const f = [...e.dataTransfer.files].find(x => x.type.startsWith('image/'));
+    if (f) loadImage(f); else toast('That isn’t an image');
+  });
+  // A file dropped anywhere else must not make the browser leave the page to show it.
+  window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener('drop', e => { if (hasFiles(e)) e.preventDefault(); });
+
+  for (const b of refToolsEl.querySelectorAll('[data-ref-tool]')) b.addEventListener('click', () => {
+    refTool = refTool === b.dataset.refTool ? null : b.dataset.refTool;
+    syncUI();
+  });
+
+  // Marking a line: dragged straight, like a scored line, and kept on the picture. A new line
+  // starts the exercise afresh.
+  function imagePoint(e) {
+    const r = stimCanvas.getBoundingClientRect(), u = Math.min(r.width, r.height), img = custom.img;
+    const p = trial.toImage([(e.clientX - r.left - r.width / 2) / u, (e.clientY - r.top - r.height / 2) / u]);
+    return [Math.max(0, Math.min(img.naturalWidth, p[0])), Math.max(0, Math.min(img.naturalHeight, p[1]))];
+  }
+  stimCanvas.addEventListener('pointerdown', e => {
+    if (!trial || trial.kind !== 'image' || !refTool || !custom.img || revealed || refActive) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.pointerType === 'pen') penSeen = true;
+    if (penSeen && e.pointerType === 'touch') return;
+    const p = imagePoint(e);
+    refActive = { id: e.pointerId, which: refTool, a: p, b: p };
+    stimCanvas.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    draw();
+  });
+  stimCanvas.addEventListener('pointermove', e => {
+    if (!refActive || e.pointerId !== refActive.id) return;
+    refActive.b = imagePoint(e);
+    draw();
+  });
+  stimCanvas.addEventListener('pointerup', e => {
+    if (!refActive || e.pointerId !== refActive.id) return;
+    const r = refActive, u = Math.min(stimCanvas.clientWidth, stimCanvas.clientHeight);
+    refActive = null;
+    if (dist(trial.toUnits(r.a), trial.toUnits(r.b)) * u < 12) { draw(); return; } // a tap
+    custom[r.which === 'given' ? 'R' : 'T'] = { a: r.a, b: r.b };
+    start('image');
+  });
+  stimCanvas.addEventListener('pointercancel', e => {
+    if (!refActive || e.pointerId !== refActive.id) return;
+    refActive = null;
+    draw();
+  });
+
+  /* ---------- controls ---------- */
+  goBtn.addEventListener('click', primary);
+  skipBtn.addEventListener('click', next);
+  for (const b of drawToolsEl.querySelectorAll('[data-tool]')) b.addEventListener('click', () => { tool = b.dataset.tool; syncUI(); });
+
+  function openSettings(open) {
+    settingsEl.hidden = !open;
+    cogBtn.setAttribute('aria-expanded', String(open));
+  }
+  cogBtn.addEventListener('click', () => openSettings(settingsEl.hidden));
+  $('chooseBtn').addEventListener('click', () => openSettings(true));
+  document.addEventListener('pointerdown', e => {
+    if (!settingsEl.hidden && !settingsEl.contains(e.target) && !cogBtn.contains(e.target) && e.target.id !== 'chooseBtn') openSettings(false);
+  });
+  for (const i of settingsEl.querySelectorAll('[data-kind]')) i.addEventListener('change', () => {
+    const k = i.dataset.kind;
+    S.kinds[k] = i.checked;
+    save();
+    if (k === 'image' && i.checked) start('image'); // straight to it, to set it up if need be
+    else if (!trial || !S.kinds[trial.kind]) next();
+    else syncUI();
+  });
+  // Takes effect at once on a line not yet checked, otherwise from the next exercise.
+  freehandToggle.addEventListener('change', () => {
+    S.freehand = freehandToggle.checked;
+    save();
+    if (revealed) return;
+    resetMarks();
+    syncUI();
+    draw();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'Escape') { openSettings(false); return; }
+    if (settingsEl.contains(e.target)) return;
+    if (e.key === 'Enter') { e.preventDefault(); primary(); return; }
+    if (!trial || !trial.copy || revealed) return;
+    const chosen = { 1: 'draw', 2: 'draft', 3: 'erase' }[e.key];
+    if (chosen) { tool = chosen; syncUI(); }
+    else if ((e.key === 'Backspace' || e.key === 'Delete') && (marks.length || drafts.length)) {
+      resetMarks();
+      drafts = [];
+      syncUI();
+      draw();
+    }
+  });
+
+  readColours();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readColours(); draw(); });
+  new ResizeObserver(draw).observe(stimCanvas);
+  new ResizeObserver(draw).observe(copyCanvas);
+  next();
+})();
+</script>
+</body>
+</html>
