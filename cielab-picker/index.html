@@ -212,6 +212,15 @@ button, input { font: inherit; color: inherit; }
 }
 .switch input:checked { background: var(--ink); }
 .switch input:checked::after { transform: translateX(12px); background: var(--well); }
+/* The H-K options, set apart from the general ones. */
+.group { display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid var(--hair); }
+.group-rows { display: grid; gap: 10px; }
+.btn { height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--hover); cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--flash); }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: var(--well); }
+.range { display: flex; gap: 10px; align-items: center; justify-content: space-between; white-space: nowrap; }
+.range input { width: 110px; margin: 0; accent-color: var(--ink); }
+.range output { min-width: 4ch; font: 400 12px var(--mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--ink-2); }
 
 /* Values card. Across all lightnesses the gamut never enters a triangle in the square's
    bottom-left (below the cyan-to-blue edge), so the card is sized to stay inside it and never
@@ -221,10 +230,15 @@ button, input { font: inherit; color: inherit; }
 .plane { container-type: inline-size; }
 .info { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px); }
 .card { display: grid; width: 188px; max-width: 100%; border-radius: 10px; overflow: hidden; touch-action: manipulation; }
-.card [data-copy] { cursor: copy; }
+.card [data-copy] { cursor: copy; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* Pressed long enough on a touch screen: lifting the finger now edits instead of copying. */
+.card .armed { box-shadow: inset 0 0 0 2px currentColor; }
 .card [data-copy]:focus-visible { outline-offset: -2px; }
 /* Double-clicking a number swaps it for this field; it must not change the card's size. */
 .edit {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
   flex: 1;
   width: 100%;
   min-width: 0;
@@ -242,7 +256,10 @@ button, input { font: inherit; color: inherit; }
 .swatch:has(.edit) .k { display: none; }
 
 /* Header is the swatch itself: the picked colour and the grey of the same L*. Both have the same
-   lightness, so one text colour (--on, set from L*) reads on both. */
+   lightness, so one text colour (--on, set from L*) reads on both. With the H-K effect on, the grey
+   is cut corner to corner: the grey that looks as bright top left, beside the colour it is compared
+   with, and the grey of the same L* bottom right. The text sits mostly on the first and is coloured
+   for it. */
 .info-head { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
 .swatch { min-width: 0; display: flex; align-items: baseline; gap: 6px; min-height: 28px; padding: 6px 10px 0; color: var(--on, #fff); }
 .swatch .k { font: 500 10px/1.2 var(--sans); letter-spacing: 0.11em; text-transform: uppercase; opacity: 0.72; }
@@ -316,6 +333,15 @@ button, input { font: inherit; color: inherit; }
   cursor: ns-resize;
 }
 .track canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 2px; }
+/* Helmholtz–Kohlrausch: where the colour appears on the value scale. A thin line with a pointer on
+   each side, filled with the grey that looks as bright, so it cannot be taken for the thumb (a solid
+   bar filled with the colour at its real L*). */
+.ghost { position: absolute; left: -8px; right: -8px; height: 12px; transform: translateY(-50%); pointer-events: none; }
+.ghost::before { content: ""; position: absolute; left: 8px; right: 8px; top: 5px; height: 2px; background: #fff; box-shadow: 0 0 0 1px #000; }
+.ghost .pt { position: absolute; top: 0; width: 7px; height: 12px; overflow: visible; }
+.ghost .pt.l { left: 0; }
+.ghost .pt.r { right: 0; }
+.ghost .pt path { fill: var(--looks, #808080); stroke: #000; stroke-width: 1.5; stroke-linejoin: round; }
 .thumb {
   position: absolute;
   left: -4px;
@@ -327,6 +353,24 @@ button, input { font: inherit; color: inherit; }
   box-shadow: 0 0 0 1.5px #000, inset 0 0 0 1px rgba(0, 0, 0, 0.55);
   pointer-events: none;
 }
+
+/* ---------- tuning the H-K strength ---------- */
+/* An opaque, neutral panel over the square, so the gamut behind it cannot tint the judgement. The
+   two patches are apart, not touching: a shared edge invites matching the border away, which tracks
+   luminance and hides the effect being measured. */
+.tune { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 16px; background: #777; color: var(--ink); border-radius: 2px; }
+.tune .range input { width: 140px; }
+.tune-body { width: min(100%, 440px); display: grid; gap: 14px; }
+.tune-title { margin: 0; text-wrap: balance; }
+.tune-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.tune-patch { aspect-ratio: 1; border-radius: 4px; }
+.tune input[type="range"] { width: 100%; margin: 0; accent-color: var(--ink); }
+.tune-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tune-step { font: 400 12px var(--mono); color: var(--ink-2); }
+.tune-actions { display: flex; gap: 8px; }
+.tune-each { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.tune-each div { display: grid; gap: 4px; justify-items: center; font: 400 12px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.tune-each i { width: 100%; aspect-ratio: 1; border-radius: 3px; }
 
 /* ---------- mix ---------- */
 /* Two blends from A to B, beside the tool buttons with the first strip level with them: as light
@@ -451,7 +495,15 @@ button, input { font: inherit; color: inherit; }
       <label class="switch" for="targetToggle">Target circle <input type="checkbox" id="targetToggle" role="switch" checked></label>
       <label class="switch" for="greyToggle">Grey point <input type="checkbox" id="greyToggle" role="switch" checked></label>
       <label class="switch" for="hexToggle">RGB in hex <input type="checkbox" id="hexToggle" role="switch"></label>
-      <label class="switch" for="p3Toggle" id="p3Label">Display P3 <input type="checkbox" id="p3Toggle" role="switch"></label>    </div>
+      <label class="switch" for="p3Toggle" id="p3Label">Display P3 <input type="checkbox" id="p3Toggle" role="switch"></label>
+      <div class="group">
+        <label class="switch" for="hkToggle" title="Saturated colours look brighter than their L*. Marks the value the colour appears to have on the slider, and shows the grey that looks as bright in the card (Nayatani 1997, object colours).">H–K effect <input type="checkbox" id="hkToggle" role="switch"></label>
+        <div class="group-rows" id="hkRows" hidden>
+          <label class="range" for="hkStrength" title="How far the colour rises above its L*. 100% is the model as published.">Strength <input type="range" id="hkStrength" min="0" max="800" step="5"><output id="hkStrengthOut" for="hkStrength"></output></label>
+          <button type="button" class="btn" id="tuneBtn" title="Match greys to a few saturated colours by eye; the strength is fitted to your matches.">Tune by eye</button>
+        </div>
+      </div>
+    </div>
 
     <div class="info" id="info">
       <div class="toast glass" id="toast" role="status"></div>
@@ -483,12 +535,34 @@ button, input { font: inherit; color: inherit; }
         </div>
       </div>
     </div>
+
+    <div class="tune" id="tune" role="dialog" aria-modal="true" aria-labelledby="tuneTitle" hidden>
+      <div class="tune-body" id="tuneMatch">
+        <p class="tune-title" id="tuneTitle">Move the slider until the grey looks as bright as the colour.</p>
+        <div class="tune-field"><div class="tune-patch" id="tuneColour"></div><div class="tune-patch" id="tuneGrey"></div></div>
+        <input type="range" id="tuneL" min="0" max="100" step="0.1" aria-label="Lightness of the grey">
+        <label class="range" for="tuneBg" title="The surround changes how strong the effect looks: it is strongest on dark grounds. Set it to what you judge colours against.">Background <input type="range" id="tuneBg" min="0" max="100" step="1"><output id="tuneBgOut" for="tuneBg"></output></label>
+        <div class="tune-foot">
+          <span class="tune-step" id="tuneStep"></span>
+          <span class="tune-actions"><button type="button" class="btn" id="tuneCancel">Cancel</button><button type="button" class="btn primary" id="tuneNext">Next</button></span>
+        </div>
+      </div>
+      <div class="tune-body" id="tuneResult" hidden>
+        <p class="tune-title" id="tuneSummary"></p>
+        <div class="tune-each" id="tuneEach"></div>
+        <div class="tune-foot">
+          <button type="button" class="btn" id="tuneAgain">Start over</button>
+          <span class="tune-actions"><button type="button" class="btn" id="tuneKeep">Keep current</button><button type="button" class="btn primary" id="tuneUse"></button></span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="lift">
     <div class="ticks" id="ticks" aria-label="Value steps"></div>
     <div class="track" id="track" tabindex="0" role="slider" aria-orientation="vertical" aria-label="Lightness L*" aria-valuemin="0" aria-valuemax="100" aria-valuenow="60">
       <canvas id="trackCanvas" width="1" height="256"></canvas>
+      <div class="ghost" id="ghost" hidden><svg class="pt l" viewBox="0 0 7 12" aria-hidden="true"><path d="M.75 .75 6.25 6 .75 11.25Z"></path></svg><svg class="pt r" viewBox="0 0 7 12" aria-hidden="true"><path d="M6.25 .75 .75 6 6.25 11.25Z"></path></svg></div>
       <div class="thumb" id="thumb"></div>
     </div>
   </div>
@@ -581,6 +655,26 @@ button, input { font: inherit; color: inherit; }
   const OK1i = inv3(OK1), OK2i = inv3(OK2);
   const xyzToOk = xyz => mul3(OK2, mul3(OK1, xyz).map(Math.cbrt));
   const okToXyz = ok => mul3(OK1i, mul3(OK2i, ok).map(v => v * v * v));
+
+  // Helmholtz–Kohlrausch: the L* of the grey that looks as bright as this colour. Nayatani (1997),
+  // object colours, variable-chromatic-colour method; gamma is how many times brighter than its
+  // luminance the colour looks. Object colours because paint is seen as a surface: Nayatani's
+  // luminous-colour model, and Fairchild and Pirrotta (1991), predict two to four times more for
+  // saturated colours, and the latter overcorrected by eye. Strength scales the rise; 1 is as published.
+  const HK_LA = 30; // adapting luminance, cd/m², about a screen at moderate brightness
+  const HK_KBR = 0.2717 * (6.469 + 6.362 * Math.pow(HK_LA, 0.4495)) / (6.469 + Math.pow(HK_LA, 0.4495));
+  const UV_WHITE = [4 * Xn / (Xn + 15 + 3 * Zn), 9 / (Xn + 15 + 3 * Zn)];
+  function hkGamma(L, a, b) {
+    const [X, Y, Z] = labToXyz(L, a, b), d = X + 15 * Y + 3 * Z;
+    if (d <= 0) return 1;
+    const du = 4 * X / d - UV_WHITE[0], dv = 9 * Y / d - UV_WHITE[1], t = Math.atan2(dv, du);
+    const q = -0.01585 - 0.03017 * Math.cos(t) - 0.04556 * Math.cos(2 * t) - 0.02667 * Math.cos(3 * t) - 0.00295 * Math.cos(4 * t)
+      + 0.14592 * Math.sin(t) + 0.05084 * Math.sin(2 * t) - 0.01900 * Math.sin(3 * t) - 0.00764 * Math.sin(4 * t);
+    return 1 + (-0.8660 * q + 0.0872 * HK_KBR) * 13 * Math.hypot(du, dv);
+  }
+  const lightnessOfY = Y => 116 * f(Math.max(0, Y)) - 16;
+  const yOfLightness = L => finv((L + 16) / 116);
+  const hkLightness = (L, a, b) => lightnessOfY(yOfLightness(L) * (1 + S.hkStrength * (hkGamma(L, a, b) - 1)));
   const hex2 = v => v.toString(16).padStart(2, '0').toUpperCase();
   const toHex = rgb => '#' + rgb.map(hex2).join('');
   function parseHex(text) {
@@ -619,12 +713,15 @@ button, input { font: inherit; color: inherit; }
   // a and b are what was asked for; the colour shown is fit(L, a, b). Picking in the square stores
   // the fitted colour, so only a lightness change can leave them apart.
   // A and B are the two ends of the mix panel, each a Lab colour.
-  const S = { L: 60, a: -30, b: -10, target: true, grey: true, info: true, hexRgb: false, p3: false, mix: false, A: null, B: null };
+  const HK_MAX = 8; // strength slider's top, 800%
+  const S = { L: 60, a: -30, b: -10, target: true, grey: true, hk: false, hkStrength: 1, tuneBg: 50, info: true, hexRgb: false, p3: false, mix: false, A: null, B: null };
   const saved = store.get('cielab-picker.state');
   const isLab = c => c && [c.L, c.a, c.b].every(Number.isFinite);
   if (isLab(saved)) {
     S.L = clamp(saved.L, 0, 100); S.a = clamp(saved.a, -R, R); S.b = clamp(saved.b, -R, R);
-    for (const k of ['target', 'grey', 'info', 'hexRgb', 'p3', 'mix']) if (typeof saved[k] === 'boolean') S[k] = saved[k];
+    for (const k of ['target', 'grey', 'hk', 'info', 'hexRgb', 'p3', 'mix']) if (typeof saved[k] === 'boolean') S[k] = saved[k];
+    if (Number.isFinite(saved.hkStrength)) S.hkStrength = clamp(saved.hkStrength, 0, HK_MAX);
+    if (Number.isFinite(saved.tuneBg)) S.tuneBg = clamp(saved.tuneBg, 0, 100);
     for (const k of ['A', 'B']) if (isLab(saved[k])) S[k] = { L: clamp(saved[k].L, 0, 100), a: clamp(saved[k].a, -R, R), b: clamp(saved[k].b, -R, R) };
     if (!S.A || !S.B) S.mix = false;
   }
@@ -657,7 +754,7 @@ button, input { font: inherit; color: inherit; }
     : toHex(rgbF.map(c => Math.round(clamp(c, 0, 1) * 255)));
   const marker = $('marker'), info = $('info'), settings = $('settings');
   const infoBtn = $('infoBtn'), cogBtn = $('cogBtn'), targetToggle = $('targetToggle'), hexToggle = $('hexToggle'), p3Toggle = $('p3Toggle');
-  const greyToggle = $('greyToggle'), mixBtn = $('mixBtn'), mix = $('mix');
+  const greyToggle = $('greyToggle'), hkToggle = $('hkToggle'), mixBtn = $('mixBtn'), mix = $('mix');
   const strips = [['light', $('stripLight')], ['ok', $('stripOk')]].map(([kind, el]) => {
     const canvas = el.querySelector('canvas');
     return { kind, el, canvas, ctx: p3Context(canvas), pos: el.querySelector('.pos'), vts: el.querySelector('.vts') };
@@ -801,12 +898,24 @@ button, input { font: inherit; color: inherit; }
 
     $('thumb').style.top = (100 - S.L) + '%';
     $('thumb').style.background = css;
+    // With the H-K effect on, the hollow mark and the card's grey show the value the colour looks.
+    const looks = S.hk ? clamp(hkLightness(S.L, e.a, e.b), 0, 100) : S.L;
+    const looksGrey = cssColor(labToLin(looks, 0, 0).map(encode));
+    $('ghost').style.top = (100 - looks) + '%';
+    $('ghost').style.setProperty('--looks', looksGrey);
     track.setAttribute('aria-valuenow', S.L.toFixed(1));
-    track.setAttribute('aria-valuetext', 'L* ' + S.L.toFixed(1) + ', value ' + (S.L / 10).toFixed(1) + ' of 10');
+    track.setAttribute('aria-valuetext', 'L* ' + S.L.toFixed(1) + ', value ' + (S.L / 10).toFixed(1) + ' of 10'
+      + (S.hk ? ', looks like value ' + (looks / 10).toFixed(1) : ''));
     for (const btn of $('ticks').children) btn.setAttribute('aria-pressed', String(Math.abs(S.L - btn.dataset.step * 10) < 0.05));
 
     $('swPicked').style.background = css;
-    $('swGrey').style.background = cssColor(labToLin(S.L, 0, 0).map(encode));
+    const realGrey = cssColor(labToLin(S.L, 0, 0).map(encode));
+    // "to bottom right" puts the 50% line exactly from the bottom-left corner to the top-right one.
+    $('swGrey').style.background = S.hk ? 'linear-gradient(to bottom right, ' + looksGrey + ' 50%, ' + realGrey + ' 50%)' : realGrey;
+    $('swGrey').style.setProperty('--on', looks >= 50 ? '#111' : '#fff');
+    $('swGrey').title = S.hk
+      ? 'Top left: grey that looks as bright as the colour, value ' + (looks / 10).toFixed(1) + '. Bottom right: grey of the same L*. Click to copy the colour\'s own value. Double-click to type one.'
+      : 'Grey of the same L*. Click to copy the value. Double-click to type one.';
     $('spaceTag').hidden = !S.p3;
     $('infoHead').style.setProperty('--on', S.L >= 50 ? '#111' : '#fff');
     $('vHex').textContent = hex;
@@ -960,6 +1069,11 @@ button, input { font: inherit; color: inherit; }
     targetToggle.checked = S.target;
     $('greyPoint').hidden = !S.grey;
     greyToggle.checked = S.grey;
+    hkToggle.checked = S.hk;
+    $('ghost').hidden = !S.hk;
+    $('hkRows').hidden = !S.hk;
+    $('hkStrength').value = Math.round(S.hkStrength * 100);
+    $('hkStrengthOut').value = Math.round(S.hkStrength * 100) + '%';
     mix.hidden = !S.mix;
     $('pinA').hidden = $('pinB').hidden = !S.mix;
     mixBtn.setAttribute('aria-pressed', String(S.mix));
@@ -976,6 +1090,90 @@ button, input { font: inherit; color: inherit; }
   cogBtn.addEventListener('click', () => openSettings(settings.hidden));
   targetToggle.addEventListener('change', () => { S.target = targetToggle.checked; applyTools(); request(false); });
   greyToggle.addEventListener('change', () => { S.grey = greyToggle.checked; applyTools(); request(false); });
+  hkToggle.addEventListener('change', () => { S.hk = hkToggle.checked; applyTools(); request(false); });
+  $('hkStrength').addEventListener('input', ev => { S.hkStrength = ev.target.value / 100; applyTools(); request(false); });
+
+  /* ---------- tuning the H-K strength by eye ---------- */
+  // Each test colour is matched with a grey that looks as bright. A match gives the rise in luminance
+  // that was seen (Ymatch / Y - 1); the model at strength 1 predicts gamma - 1. The strength is the
+  // least-squares scale between the two over all matches. The colours, all sRGB, are where the model
+  // predicts a clear rise at middle values, from blue round through violet and magenta to orange.
+  const TUNE_HEX = ['#2448FF', '#0090FF', '#9B30E6', '#E0218A', '#FF2A1A', '#FF5A00'];
+  const srgbLab = hex => xyzToLab(mul3(SPACES.srgb.toXYZ, parseHex(hex).map(v => decode(v / 255))));
+  const tune = { order: [], i: 0, matches: [], result: 1 };
+  const tuneGrey = () => { $('tuneGrey').style.background = cssColor(labToLin(+$('tuneL').value, 0, 0).map(encode)); };
+  function tuneShow() {
+    const c = tune.order[tune.i];
+    $('tuneColour').style.background = labCss(c);
+    // A random start, so the first position seen does not pull the match toward itself.
+    $('tuneL').value = clamp(c.L - 5 + Math.random() * 25, 0, 100).toFixed(1);
+    tuneGrey();
+    $('tuneStep').textContent = (tune.i + 1) + ' of ' + tune.order.length;
+    $('tuneNext').textContent = tune.i === tune.order.length - 1 ? 'Done' : 'Next';
+    $('tuneMatch').hidden = false;
+    $('tuneResult').hidden = true;
+    $('tuneL').focus({ preventScroll: true });
+  }
+  // The surround is the user's to set. Text and buttons switch to light or dark to stay readable on it.
+  function tuneSurround() {
+    const el = $('tune'), L = S.tuneBg, dark = L < 55;
+    el.style.background = cssColor(labToLin(L, 0, 0).map(encode));
+    const tokens = dark
+      ? { '--ink': '#ececec', '--ink-2': '#b8b8b8', '--line': 'rgba(255, 255, 255, 0.32)', '--hover': 'rgba(255, 255, 255, 0.08)', '--flash': 'rgba(255, 255, 255, 0.18)', '--well': '#111111' }
+      : { '--ink': '#111111', '--ink-2': '#333333', '--line': 'rgba(0, 0, 0, 0.32)', '--hover': 'rgba(0, 0, 0, 0.07)', '--flash': 'rgba(0, 0, 0, 0.16)', '--well': '#e6e6e6' };
+    for (const k in tokens) el.style.setProperty(k, tokens[k]);
+    $('tuneBg').value = L;
+    $('tuneBgOut').value = (L / 10).toFixed(1);
+  }
+  $('tuneBg').addEventListener('input', ev => { S.tuneBg = +ev.target.value; tuneSurround(); request(false); });
+  function tuneStart() {
+    tune.order = TUNE_HEX.map(srgbLab);
+    for (let i = tune.order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tune.order[i], tune.order[j]] = [tune.order[j], tune.order[i]];
+    }
+    tune.i = 0;
+    tune.matches = [];
+    openSettings(false);
+    tuneSurround();
+    $('tune').hidden = false;
+    tuneShow();
+  }
+  function tuneClose() {
+    $('tune').hidden = true;
+    cogBtn.focus({ preventScroll: true });
+  }
+  function tuneFinish() {
+    let num = 0, den = 0;
+    const each = tune.order.map((c, i) => {
+      const g = hkGamma(c.L, c.a, c.b) - 1, r = yOfLightness(tune.matches[i]) / yOfLightness(c.L) - 1;
+      num += g * r;
+      den += g * g;
+      return { c, alone: r / g };
+    });
+    const fitted = num / den;
+    tune.result = clamp(Math.round(fitted * 20) / 20, 0, HK_MAX); // to the strength slider's 5% steps
+    const pct = v => Math.round(v * 100) + '%';
+    $('tuneSummary').textContent = 'On a value ' + (S.tuneBg / 10).toFixed(1) + ' background, your matches fit a strength of '
+      + (fitted > HK_MAX ? pct(fitted) + ', past the slider\'s ' + pct(HK_MAX) : pct(tune.result))
+      + '. Under each colour is the strength it alone suggests.';
+    $('tuneEach').innerHTML = each.map(e => '<div><i style="background:' + labCss(e.c) + '"></i>' + pct(e.alone) + '</div>').join('');
+    $('tuneUse').textContent = 'Use ' + pct(tune.result);
+    $('tuneMatch').hidden = true;
+    $('tuneResult').hidden = false;
+    $('tuneUse').focus({ preventScroll: true });
+  }
+  $('tuneBtn').addEventListener('click', tuneStart);
+  $('tuneL').addEventListener('input', tuneGrey);
+  $('tuneNext').addEventListener('click', () => {
+    tune.matches[tune.i] = +$('tuneL').value;
+    if (++tune.i < tune.order.length) tuneShow(); else tuneFinish();
+  });
+  $('tuneCancel').addEventListener('click', tuneClose);
+  $('tuneKeep').addEventListener('click', tuneClose);
+  $('tuneAgain').addEventListener('click', tuneStart);
+  $('tuneUse').addEventListener('click', () => { S.hkStrength = tune.result; applyTools(); request(false); tuneClose(); });
+  $('tune').addEventListener('keydown', ev => { if (ev.key === 'Escape') { tuneClose(); ev.preventDefault(); } });
   mixBtn.addEventListener('click', () => {
     S.mix = !S.mix;
     // The first time, start from a light-to-shadow pair: the current colour and the same hue 40 L* away.
@@ -1039,7 +1237,10 @@ button, input { font: inherit; color: inherit; }
       }
     };
     // The second click of a double-click starts typing instead, and clicks inside the field are its own.
-    btn.addEventListener('click', ev => { if (ev.detail < 2 && !ev.target.closest('.edit')) copy(); });
+    btn.addEventListener('click', ev => {
+      if (suppressClick) { suppressClick = false; return; }
+      if (ev.detail < 2 && !ev.target.closest('.edit')) copy();
+    });
     btn.addEventListener('keydown', ev => {
       if (ev.target !== btn) return;
       if (ev.key === 'Enter' || ev.key === ' ') { copy(); ev.preventDefault(); }
@@ -1139,7 +1340,44 @@ button, input { font: inherit; color: inherit; }
     input.focus();
     input.select();
   }
-  document.querySelector('.card').addEventListener('dblclick', ev => {
+  // Right-click, or a long press on a touch screen, edits a value without copying it first, so a value
+  // already on the clipboard can be pasted in. (The first click of a double-click copies.)
+  const card = document.querySelector('.card');
+  let press = null, suppressClick = false;
+  const endPress = () => {
+    if (!press) return;
+    clearTimeout(press.timer);
+    press.holder.classList.remove('armed');
+    press = null;
+  };
+  card.addEventListener('contextmenu', ev => {
+    const holder = ev.target.closest('[data-field]');
+    if (!holder || ev.target.closest('.edit')) return;
+    ev.preventDefault();
+    if (!press) beginEdit(holder); // a touch press opens the field when the finger lifts, below
+  });
+  card.addEventListener('pointerdown', ev => {
+    if (ev.pointerType === 'mouse' || ev.target.closest('.edit')) return;
+    const holder = ev.target.closest('[data-field]');
+    if (!holder) return;
+    endPress();
+    press = { holder, x: ev.clientX, y: ev.clientY, armed: false };
+    press.timer = setTimeout(() => { press.armed = true; holder.classList.add('armed'); }, 500);
+  });
+  card.addEventListener('pointermove', ev => { if (press && Math.hypot(ev.clientX - press.x, ev.clientY - press.y) > 10) endPress(); });
+  card.addEventListener('pointercancel', endPress);
+  card.addEventListener('pointerup', () => {
+    if (!press) return;
+    const { holder, armed } = press;
+    endPress();
+    // Opened on lifting the finger: iOS shows the keyboard only for a focus made during a touch event.
+    if (armed) {
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 400); // in case no click follows
+      beginEdit(holder);
+    }
+  });
+  card.addEventListener('dblclick', ev => {
     if (ev.target.closest('.edit')) return;
     beginEdit(ev.target.closest('[data-field]'));
     ev.preventDefault();
