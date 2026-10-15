@@ -105,7 +105,7 @@ button, input { font: inherit; color: inherit; }
 }
 .surface:focus-visible { outline-offset: -3px; }
 /* Focus reached by clicking or touching shows no ring; reaching it with Tab still does. */
-.surface.quiet, .track.quiet { outline: none; }
+.surface.quiet, .track.quiet, .strip.quiet { outline: none; }
 .surface canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .marker {
   position: absolute;
@@ -115,6 +115,30 @@ button, input { font: inherit; color: inherit; }
   transform: translate(-50%, -50%);
   border: 2px solid #fff;
   box-shadow: 0 0 0 1.5px #000, inset 0 0 0 1px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+/* a* = b* = 0. Lab here is D65, the white of both RGB spaces, so grey is the centre at every L*. */
+.grey-point {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 1px #000;
+  pointer-events: none;
+}
+/* The mix ends A and B, drawn where their a*b* falls even when their L* is another slice. */
+.pin {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 2px solid #fff;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1.5px #000;
   pointer-events: none;
 }
 
@@ -127,7 +151,11 @@ button, input { font: inherit; color: inherit; }
   backdrop-filter: blur(16px) saturate(1.5);
 }
 
-.tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 2px; padding: 3px; border-radius: 11px; }
+/* Top edge of the square: the mix panel (when open) and the tool buttons share one row. The row
+   itself lets pointers through to the square; only its panels catch them. */
+.topbar { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: flex-end; align-items: flex-start; gap: 8px; pointer-events: none; }
+.topbar > * { pointer-events: auto; }
+.tools { flex: none; display: flex; gap: 2px; padding: 3px; border-radius: 11px; }
 .tool {
   width: 30px;
   height: 30px;
@@ -300,11 +328,84 @@ button, input { font: inherit; color: inherit; }
   pointer-events: none;
 }
 
+/* ---------- mix ---------- */
+/* Two blends from A to B, beside the tool buttons with the first strip level with them: as light
+   mixes, and in even OKLab steps. Ticks mark each whole value step (every 10 L*). The end swatches
+   show the current colour as a small patch inside a field of A or B, so its look against each can be
+   judged by eye. The panel's band can hold the brightest yellows (always in P3, and in sRGB on
+   squares under about 600px), so it fades while a colour is being picked in the square. */
+.mix {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-areas: "a l b" "a o b";
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-rows: 30px 30px;
+  gap: 4px 6px;
+  padding: 3px;
+  border-radius: 11px;
+}
+.mix-k { grid-area: k; display: none; grid-template-rows: 1fr 1fr; row-gap: 4px; padding-left: 4px; }
+.mix-k span {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font: 500 10px/1 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+@container (min-width: 476px) {
+  .mix { grid-template-areas: "k a l b" "k a o b"; grid-template-columns: auto 40px minmax(0, 1fr) 40px; }
+  .mix-k { display: grid; }
+}
+@container (max-width: 387px) {
+  .mix { grid-template-columns: 30px minmax(0, 1fr) 30px; }
+}
+#endA { grid-area: a; }
+#endB { grid-area: b; }
+#stripLight { grid-area: l; }
+#stripOk { grid-area: o; }
+.end { position: relative; padding: 0; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.end:active { transform: scale(0.96); }
+.end .patch { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; transform: translate(-50%, -50%); }
+.strip {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--well);
+  touch-action: none;
+  cursor: ew-resize;
+}
+.strip canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 5px; }
+/* A value-step tick: a short line at the top and bottom edges with the step between. Text and lines
+   are dark from value 5 up and light below it, as on the card. */
+.vts { position: absolute; inset: 0; overflow: hidden; border-radius: 5px; pointer-events: none; }
+.vt { position: absolute; top: 0; bottom: 0; width: 0; display: flex; align-items: center; justify-content: center; font: 500 10px/1 var(--mono); }
+.vt::before, .vt::after { content: ""; position: absolute; left: -0.5px; width: 1px; height: 6px; background: currentColor; }
+.vt::before { top: 0; }
+.vt::after { bottom: 0; }
+.vt.bare { font-size: 0; }
+.strip .pos {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 8px;
+  transform: translateX(-50%);
+  border: 2px solid #fff;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1.5px #000, inset 0 0 0 1px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+.plane.picking .mix { opacity: 0.12; }
+
 @media (prefers-reduced-motion: no-preference) {
   .tool { transition: background 0.14s, color 0.14s, transform 0.1s; }
   .tool svg { transition: transform 0.25s; }
   .ticks button { transition: color 0.12s; }
   .switch input, .info-row { transition: background 0.15s; }
+  .mix { transition: opacity 0.12s; }
   .toast { transition: opacity 0.15s; }
   .switch input::after { transition: transform 0.15s, background 0.15s; }
 }
@@ -315,20 +416,40 @@ button, input { font: inherit; color: inherit; }
   <div class="plane" id="plane">
     <div class="surface" id="surface" tabindex="0" role="group" aria-label="a* b* plane at the current lightness. Arrow keys move the selection by 1, Shift and arrow by 10.">
       <canvas id="planeCanvas" width="600" height="600"></canvas>
+      <div class="grey-point" id="greyPoint"></div>
+      <div class="pin" id="pinA" hidden></div>
+      <div class="pin" id="pinB" hidden></div>
       <div class="marker" id="marker"></div>
     </div>
 
-    <div class="tools glass">
-      <button type="button" class="tool" id="infoBtn" aria-pressed="true" aria-controls="info" aria-label="Colour values" title="Colour values">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="11"></line><line x1="12" y1="7.5" x2="12" y2="7.5"></line></svg>
-      </button>
-      <button type="button" class="tool" id="cogBtn" aria-expanded="false" aria-controls="settings" aria-label="Settings" title="Settings">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-      </button>
+    <div class="topbar">
+      <div class="mix glass" id="mix" hidden>
+        <div class="mix-k" aria-hidden="true"><span>Light</span><span>OKLab</span></div>
+        <button type="button" class="end" id="endA" aria-label="Set A to the current colour" title="A. Tap to set A to the current colour. The patch is the current colour against A."><span class="patch"></span></button>
+        <div class="strip" id="stripLight" tabindex="0" role="slider" aria-label="Mix of A and B as light" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" title="A to B as light mixes. Ticks mark value steps. Tap to pick.">
+          <canvas width="1" height="1"></canvas><div class="vts"></div><div class="pos" hidden></div>
+        </div>
+        <div class="strip" id="stripOk" tabindex="0" role="slider" aria-label="Mix of A and B in even OKLab steps" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" title="A to B in even OKLab steps. Ticks mark value steps. Tap to pick.">
+          <canvas width="1" height="1"></canvas><div class="vts"></div><div class="pos" hidden></div>
+        </div>
+        <button type="button" class="end" id="endB" aria-label="Set B to the current colour" title="B. Tap to set B to the current colour. The patch is the current colour against B."><span class="patch"></span></button>
+      </div>
+      <div class="tools glass">
+        <button type="button" class="tool" id="mixBtn" aria-pressed="false" aria-controls="mix" aria-label="Mix two colours" title="Mix two colours">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="6"></circle><circle cx="15" cy="12" r="6"></circle></svg>
+        </button>
+        <button type="button" class="tool" id="infoBtn" aria-pressed="true" aria-controls="info" aria-label="Colour values" title="Colour values">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="11"></line><line x1="12" y1="7.5" x2="12" y2="7.5"></line></svg>
+        </button>
+        <button type="button" class="tool" id="cogBtn" aria-expanded="false" aria-controls="settings" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
     </div>
 
     <div class="settings glass" id="settings" hidden>
       <label class="switch" for="targetToggle">Target circle <input type="checkbox" id="targetToggle" role="switch" checked></label>
+      <label class="switch" for="greyToggle">Grey point <input type="checkbox" id="greyToggle" role="switch" checked></label>
       <label class="switch" for="hexToggle">RGB in hex <input type="checkbox" id="hexToggle" role="switch"></label>
       <label class="switch" for="p3Toggle" id="p3Label">Display P3 <input type="checkbox" id="p3Toggle" role="switch"></label>    </div>
 
@@ -433,17 +554,33 @@ button, input { font: inherit; color: inherit; }
   function labToRgb8(L, a, b) {
     return labToLin(L, a, b).map(c => Math.round(encode(c) * 255));
   }
-  // Encoded RGB in 0..1 (in the space in use) to Lab. One RGB triple is one colour, so it fixes L*
-  // as well as a* and b*.
-  function rgbToLab(rgb) {
-    const [r, g, b] = rgb.map(decode);
-    const m = SP.toXYZ;
-    const X = m[0][0] * r + m[0][1] * g + m[0][2] * b;
-    const Y = m[1][0] * r + m[1][1] * g + m[1][2] * b;
-    const Z = m[2][0] * r + m[2][1] * g + m[2][2] * b;
+  const mul3 = (m, v) => [0, 1, 2].map(i => m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2]);
+  function inv3(m) {
+    const [a, b, c] = m[0], [d, e, g] = m[1], [h, i, k] = m[2];
+    const A = e * k - g * i, B = g * h - d * k, C = d * i - e * h, det = a * A + b * B + c * C;
+    return [[A / det, (c * i - b * k) / det, (b * g - c * e) / det],
+            [B / det, (a * k - c * h) / det, (c * d - a * g) / det],
+            [C / det, (b * h - a * i) / det, (a * e - b * d) / det]];
+  }
+  function labToXyz(L, a, b) {
+    const fy = (L + 16) / 116;
+    return [Xn * finv(fy + a / 500), finv(fy), Zn * finv(fy - b / 200)];
+  }
+  function xyzToLab([X, Y, Z]) {
     const fx = f(X / Xn), fy = f(Y), fz = f(Z / Zn);
     return { L: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
   }
+  // Encoded RGB in 0..1 (in the space in use) to Lab. One RGB triple is one colour, so it fixes L*
+  // as well as a* and b*.
+  function rgbToLab(rgb) {
+    return xyzToLab(mul3(SP.toXYZ, rgb.map(decode)));
+  }
+  // OKLab (Ottosson 2020), taken from XYZ so that it does not depend on the RGB space in use.
+  const OK1 = [[0.8189330101, 0.3618667424, -0.1288597137], [0.0329845436, 0.9293118715, 0.0361456387], [0.0482003018, 0.2643662691, 0.6338517070]];
+  const OK2 = [[0.2104542553, 0.7936177850, -0.0040720468], [1.9779984951, -2.4285922050, 0.4505937099], [0.0259040371, 0.7827717662, -0.8086757660]];
+  const OK1i = inv3(OK1), OK2i = inv3(OK2);
+  const xyzToOk = xyz => mul3(OK2, mul3(OK1, xyz).map(Math.cbrt));
+  const okToXyz = ok => mul3(OK1i, mul3(OK2i, ok).map(v => v * v * v));
   const hex2 = v => v.toString(16).padStart(2, '0').toUpperCase();
   const toHex = rgb => '#' + rgb.map(hex2).join('');
   function parseHex(text) {
@@ -481,17 +618,19 @@ button, input { font: inherit; color: inherit; }
   /* ---------- state ---------- */
   // a and b are what was asked for; the colour shown is fit(L, a, b). Picking in the square stores
   // the fitted colour, so only a lightness change can leave them apart.
-  const S = { L: 60, a: -30, b: -10, target: true, info: true, hexRgb: false, p3: false };
+  // A and B are the two ends of the mix panel, each a Lab colour.
+  const S = { L: 60, a: -30, b: -10, target: true, grey: true, info: true, hexRgb: false, p3: false, mix: false, A: null, B: null };
   const saved = store.get('cielab-picker.state');
-  if (saved && [saved.L, saved.a, saved.b].every(Number.isFinite)) {
+  const isLab = c => c && [c.L, c.a, c.b].every(Number.isFinite);
+  if (isLab(saved)) {
     S.L = clamp(saved.L, 0, 100); S.a = clamp(saved.a, -R, R); S.b = clamp(saved.b, -R, R);
-    if (typeof saved.target === 'boolean') S.target = saved.target;
-    if (typeof saved.info === 'boolean') S.info = saved.info;
-    if (typeof saved.hexRgb === 'boolean') S.hexRgb = saved.hexRgb;
-    if (typeof saved.p3 === 'boolean') S.p3 = saved.p3;
+    for (const k of ['target', 'grey', 'info', 'hexRgb', 'p3', 'mix']) if (typeof saved[k] === 'boolean') S[k] = saved[k];
+    for (const k of ['A', 'B']) if (isLab(saved[k])) S[k] = { L: clamp(saved[k].L, 0, 100), a: clamp(saved[k].a, -R, R), b: clamp(saved[k].b, -R, R) };
+    if (!S.A || !S.B) S.mix = false;
   }
   let current = null; // text for copying
   let view = null;    // the shown colour's numbers, as a starting point when one of them is typed over
+  let mixPick = null; // where on a mix strip the current colour was picked, while it stays unchanged
 
   /* ---------- elements ---------- */
   const plane = $('plane'), surface = $('surface');
@@ -518,6 +657,11 @@ button, input { font: inherit; color: inherit; }
     : toHex(rgbF.map(c => Math.round(clamp(c, 0, 1) * 255)));
   const marker = $('marker'), info = $('info'), settings = $('settings');
   const infoBtn = $('infoBtn'), cogBtn = $('cogBtn'), targetToggle = $('targetToggle'), hexToggle = $('hexToggle'), p3Toggle = $('p3Toggle');
+  const greyToggle = $('greyToggle'), mixBtn = $('mixBtn'), mix = $('mix');
+  const strips = [['light', $('stripLight')], ['ok', $('stripOk')]].map(([kind, el]) => {
+    const canvas = el.querySelector('canvas');
+    return { kind, el, canvas, ctx: p3Context(canvas), pos: el.querySelector('.pos'), vts: el.querySelector('.vts') };
+  });
 
   const GAMMA = new Uint8Array(4097);
   for (let i = 0; i <= 4096; i++) GAMMA[i] = Math.round(encode(i / 4096) * 255);
@@ -569,6 +713,70 @@ button, input { font: inherit; color: inherit; }
     tctx.putImageData(img, 0, 0);
   }
 
+  // The colour a fraction t of the way from A to B. 'light' averages XYZ, which is how light adds
+  // (an out-of-focus edge, overlapping lights); 'ok' takes even steps in OKLab. Either way the result
+  // is fitted to the space in use.
+  function mixAt(kind, t) {
+    const xa = labToXyz(S.A.L, S.A.a, S.A.b), xb = labToXyz(S.B.L, S.B.a, S.B.b);
+    const lerp = (p, q) => p.map((v, i) => v + (q[i] - v) * t);
+    const lab = xyzToLab(kind === 'light' ? lerp(xa, xb) : okToXyz(lerp(xyzToOk(xa), xyzToOk(xb))));
+    const L = clamp(lab.L, 0, 100), e = fit(L, lab.a, lab.b);
+    return { L, a: e.a, b: e.b };
+  }
+  let stripsDirty = true;
+  function renderStrips() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    for (const s of strips) {
+      const w = clamp(Math.round(s.el.clientWidth * dpr), 2, 1200);
+      if (s.canvas.width !== w) s.canvas.width = w;
+      const img = imageData(s.ctx, w, 1);
+      const Ls = new Float64Array(w);
+      for (let x = 0; x < w; x++) {
+        const c = mixAt(s.kind, x / (w - 1)), rgb = labToRgb8(c.L, c.a, c.b);
+        Ls[x] = c.L;
+        img.data[x * 4] = rgb[0]; img.data[x * 4 + 1] = rgb[1]; img.data[x * 4 + 2] = rgb[2]; img.data[x * 4 + 3] = 255;
+      }
+      s.ctx.putImageData(img, 0, 0);
+      renderValueTicks(s, Ls);
+    }
+  }
+  // A tick wherever the strip crosses a whole value step (L* 10, 20, ... 90). A mix need not change
+  // L* steadily, so every crossing is marked. Steps closer than 14px keep their lines but drop the number.
+  function renderValueTicks(s, Ls) {
+    const n = Ls.length, cssW = s.el.clientWidth, ticks = [];
+    for (let x = 1; x < n; x++) {
+      const l0 = Ls[x - 1], l1 = Ls[x], found = [];
+      for (let k = 1; k <= 9; k++) {
+        if ((l0 < k * 10) !== (l1 < k * 10)) found.push({ k, pos: (x - 1 + (k * 10 - l0) / (l1 - l0)) / (n - 1) });
+      }
+      ticks.push(...found.sort((p, q) => p.pos - q.pos));
+    }
+    let lastPx = -Infinity;
+    s.vts.innerHTML = ticks.map(({ k, pos }) => {
+      const px = pos * cssW, label = px - lastPx >= 14;
+      if (label) lastPx = px;
+      return '<span class="vt' + (label ? '' : ' bare') + '" style="left:' + (pos * 100).toFixed(3) + '%;color:' + (k >= 5 ? '#111' : '#fff') + '">' + k + '</span>';
+    }).join('');
+  }
+  const labCss = c => { const e = fit(c.L, c.a, c.b); return cssColor(labToLin(c.L, e.a, e.b).map(encode)); };
+  const placeOnPlane = (el, a, b) => { el.style.left = ((a / R + 1) * 50) + '%'; el.style.top = ((1 - b / R) * 50) + '%'; };
+  function syncMix(css) {
+    for (const [end, pin, btn] of [[S.A, $('pinA'), $('endA')], [S.B, $('pinB'), $('endB')]]) {
+      const e = fit(end.L, end.a, end.b), endCss = labCss(end);
+      placeOnPlane(pin, e.a, e.b);
+      pin.style.background = endCss;
+      btn.style.background = endCss;
+      btn.firstChild.style.background = css;
+    }
+    const picked = mixPick && mixPick.L === S.L && mixPick.a === S.a && mixPick.b === S.b;
+    for (const s of strips) {
+      const here = picked && mixPick.kind === s.kind;
+      s.pos.hidden = !here;
+      if (here) { s.pos.style.left = (mixPick.t * 100) + '%'; s.pos.style.background = css; }
+      s.el.setAttribute('aria-valuenow', here ? Math.round(mixPick.t * 100) : 50);
+    }
+  }
+
   const fmt = (v, d) => { const s = v.toFixed(d); return /^-0(\.0+)?$/.test(s) ? s.slice(1) : s; };
   let lastHue = 180;
 
@@ -586,10 +794,10 @@ button, input { font: inherit; color: inherit; }
     const rgbText = S.hexRgb ? rgb.map(hex2) : rgb;
     view = { a: e.a, b: e.b, C, h: hLab, rgb, hsv: { h: lastHue, s: hsv.s, v: hsv.v } };
 
-    marker.style.left = ((e.a / R + 1) * 50) + '%';
-    marker.style.top = ((1 - e.b / R) * 50) + '%';
+    placeOnPlane(marker, e.a, e.b);
     const css = cssColor(rgbF);
     marker.style.background = css;
+    if (S.mix) syncMix(css);
 
     $('thumb').style.top = (100 - S.L) + '%';
     $('thumb').style.background = css;
@@ -629,6 +837,7 @@ button, input { font: inherit; color: inherit; }
   function paint() {
     queued = false;
     if (planeDirty) { renderPlane(); planeDirty = false; }
+    if (S.mix && stripsDirty) { renderStrips(); stripsDirty = false; }
     renderTrack();
     syncReadout();
   }
@@ -646,12 +855,14 @@ button, input { font: inherit; color: inherit; }
   for (const el of [surface, track]) el.addEventListener('blur', () => el.classList.remove('quiet'));
   surface.addEventListener('pointerdown', ev => {
     surface.classList.add('quiet');
+    plane.classList.add('picking'); // fades the mix panel, which can sit over the brightest yellows
     surface.setPointerCapture(ev.pointerId);
     surface.focus({ preventScroll: true });
     planeFromPointer(ev);
     ev.preventDefault();
   });
   surface.addEventListener('pointermove', ev => { if (surface.hasPointerCapture(ev.pointerId)) planeFromPointer(ev); });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) surface.addEventListener(type, () => plane.classList.remove('picking'));
   surface.addEventListener('keydown', ev => {
     const step = ev.shiftKey ? 10 : 1;
     const move = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key];
@@ -688,6 +899,50 @@ button, input { font: inherit; color: inherit; }
     else return;
     ev.preventDefault();
   });
+  /* ---------- input: mix ---------- */
+  function pickMix(kind, t) {
+    const c = mixAt(kind, t);
+    const planeChanged = c.L !== S.L;
+    S.L = c.L; S.a = c.a; S.b = c.b;
+    mixPick = { kind, t, L: c.L, a: c.a, b: c.b };
+    request(planeChanged);
+  }
+  for (const s of strips) {
+    const fromPointer = ev => {
+      const r = s.el.getBoundingClientRect();
+      pickMix(s.kind, clamp((ev.clientX - r.left) / r.width, 0, 1));
+    };
+    s.el.addEventListener('pointerdown', ev => {
+      s.el.classList.add('quiet');
+      s.el.setPointerCapture(ev.pointerId);
+      s.el.focus({ preventScroll: true });
+      fromPointer(ev);
+      ev.preventDefault();
+    });
+    s.el.addEventListener('pointermove', ev => { if (s.el.hasPointerCapture(ev.pointerId)) fromPointer(ev); });
+    s.el.addEventListener('blur', () => s.el.classList.remove('quiet'));
+    s.el.addEventListener('keydown', ev => {
+      const delta = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[ev.key];
+      let t = mixPick && mixPick.kind === s.kind ? mixPick.t : 0.5;
+      if (delta !== undefined) t += delta * (ev.shiftKey ? 0.25 : 0.05);
+      else if (ev.key === 'Home') t = 0;
+      else if (ev.key === 'End') t = 1;
+      else return;
+      pickMix(s.kind, clamp(t, 0, 1));
+      ev.preventDefault();
+    });
+  }
+  function setEnd(which) {
+    const e = fit(S.L, S.a, S.b);
+    S[which] = { L: S.L, a: e.a, b: e.b };
+    stripsDirty = true;
+    request(false);
+    say(which + ' is now ' + current.hex);
+  }
+  $('endA').addEventListener('click', () => setEnd('A'));
+  $('endB').addEventListener('click', () => setEnd('B'));
+  if ('ResizeObserver' in window) new ResizeObserver(() => { stripsDirty = true; request(false); }).observe(mix);
+
   for (let step = 10; step >= 0; step--) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -703,6 +958,11 @@ button, input { font: inherit; color: inherit; }
   function applyTools() {
     marker.hidden = !S.target;
     targetToggle.checked = S.target;
+    $('greyPoint').hidden = !S.grey;
+    greyToggle.checked = S.grey;
+    mix.hidden = !S.mix;
+    $('pinA').hidden = $('pinB').hidden = !S.mix;
+    mixBtn.setAttribute('aria-pressed', String(S.mix));
     hexToggle.checked = S.hexRgb;
     p3Toggle.checked = S.p3;
     info.hidden = !S.info;
@@ -715,6 +975,20 @@ button, input { font: inherit; color: inherit; }
   infoBtn.addEventListener('click', () => { S.info = !S.info; applyTools(); request(false); });
   cogBtn.addEventListener('click', () => openSettings(settings.hidden));
   targetToggle.addEventListener('change', () => { S.target = targetToggle.checked; applyTools(); request(false); });
+  greyToggle.addEventListener('change', () => { S.grey = greyToggle.checked; applyTools(); request(false); });
+  mixBtn.addEventListener('click', () => {
+    S.mix = !S.mix;
+    // The first time, start from a light-to-shadow pair: the current colour and the same hue 40 L* away.
+    if (S.mix && (!S.A || !S.B)) {
+      const e = fit(S.L, S.a, S.b), L2 = S.L > 50 ? S.L - 40 : S.L + 40, e2 = fit(L2, e.a, e.b);
+      S.A = { L: S.L, a: e.a, b: e.b };
+      S.B = { L: L2, a: e2.a, b: e2.b };
+      say('Tap A or B to set it to the current colour');
+    }
+    stripsDirty = true;
+    applyTools();
+    request(false);
+  });
   hexToggle.addEventListener('change', () => { S.hexRgb = hexToggle.checked; request(false); });
   if (!canDrawP3) {
     p3Toggle.disabled = true;
@@ -727,6 +1001,7 @@ button, input { font: inherit; color: inherit; }
     // The Lab colour stays; its RGB numbers change because they are now in the other space.
     S.p3 = p3Toggle.checked;
     SP = S.p3 ? SPACES.p3 : SPACES.srgb;
+    stripsDirty = true;
     request(true);
     if (S.p3 && !screenIsP3) say('This screen reports an sRGB gamut, so colours beyond sRGB will look clipped here.');
   });
